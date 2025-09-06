@@ -85,9 +85,7 @@
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="tools">Tools</a>
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="about">Tentang Saya</a>
                 </div>
-                <div id="header-auth-section" class="hidden md:flex items-center gap-4">
-                     <a href="#" id="admin-login-button" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Admin Login</a>
-                </div>
+            <!-- admin login removed from public header; use index.html/adminat to access admin -->
                 <button id="mobile-menu-button" class="md:hidden">
                     <i data-lucide="menu"></i>
                 </button>
@@ -99,9 +97,7 @@
                 <a href="#" class="nav-link block py-2 text-gray-600 hover:text-blue-600" data-page="paths">Jalur Belajar</a>
                 <a href="#" class="nav-link block py-2 text-gray-600 hover:text-blue-600" data-page="tools">Tools</a>
                 <a href="#" class="nav-link block py-2 text-gray-600 hover:text-blue-600" data-page="about">Tentang Saya</a>
-                 <div id="mobile-auth-section" class="mt-4">
-                    <a href="#" id="admin-login-button-mobile" class="block bg-blue-500 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-600 transition">Admin Login</a>
-                 </div>
+                      <!-- mobile admin link removed; use index.html/adminat to access admin -->
             </div>
         </header>
 
@@ -268,81 +264,32 @@
         </div>
     </template>
     
-    <template id="admin-login-page-template">
-         <div class="flex items-center justify-center py-16 bg-gray-100 min-h-screen">
-            <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-                <h2 class="text-3xl font-bold text-center mb-6">Admin Login</h2>
-                <form id="admin-login-form">
-                    <div class="mb-4">
-                        <label for="username" class="block text-gray-700 mb-2">Username</label>
-                        <input type="text" id="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value="anggapubg180@gmail.com" required>
-                    </div>
-                    <div class="mb-6">
-                        <label for="password" class="block text-gray-700 mb-2">Password</label>
-                        <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value="@ngaT180180" required>
-                    </div>
-                    <p id="login-error" class="text-red-500 text-sm mb-4 hidden"></p>
-                    <button type="submit" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-600 transition">Login</button>
-                </form>
-            </div>
-        </div>
-    </template>
-
-    <template id="admin-panel-page-template">
-        <div class="flex min-h-screen bg-gray-100">
-            <!-- Sidebar -->
-            <aside class="w-64 bg-gray-800 text-gray-200 p-4 hidden md:block">
-                <div class="flex flex-col h-full">
-                    <h2 class="text-2xl font-bold mb-8 text-white">Admin Panel</h2>
-                    <nav id="admin-sidebar-nav" class="space-y-2 flex-grow">
-                        <a class="admin-sidebar-link active" data-admin-page="dashboard"><i data-lucide="layout-dashboard" class="mr-3"></i>Dashboard</a>
-                        <a class="admin-sidebar-link" data-admin-page="articles"><i data-lucide="file-text" class="mr-3"></i>Artikel</a>
-                        <a class="admin-sidebar-link" data-admin-page="categories"><i data-lucide="bookmark" class="mr-3"></i>Kategori</a>
-                        <a class="admin-sidebar-link" data-admin-page="paths"><i data-lucide="milestone" class="mr-3"></i>Jalur Belajar</a>
-                        <a class="admin-sidebar-link" data-admin-page="tools"><i data-lucide="video" class="mr-3"></i>Tools (Video)</a>
-                        <a class="admin-sidebar-link" data-admin-page="comments"><i data-lucide="message-circle" class="mr-3"></i>Komentar</a>
-                    </nav>
-                    <div>
-                        <a href="#" id="admin-logout-button" class="admin-sidebar-link hover:bg-red-500"><i data-lucide="log-out" class="mr-3"></i>Logout</a>
-                    </div>
-                </div>
-            </aside>
-            <!-- Main Content -->
-            <main id="admin-content" class="flex-1 p-6 md:p-10">
-                <!-- Konten admin akan di-render di sini -->
-            </main>
-        </div>
-    </template>
-    
     <script type="module">
-        // NOTE: Using Firebase compat CDN (global `firebase`) so the page can be opened via file://
-        // Global error handlers to surface runtime exceptions for easier debugging
+        // Public-only script: Firebase init (compat) + public rendering & routing.
+        // Admin shortcut: if URL path ends with /adminat or hash is #adminat -> redirect to admin.html
+        try {
+            const p = window.location.pathname || '';
+            if (p.endsWith('/adminat') || p.endsWith('/adminat/')) {
+                window.location.href = window.location.pathname.replace(/\/adminat\/?$/, '') + '/admin.html';
+            }
+            if (window.location.hash === '#adminat') {
+                window.location.href = 'admin.html';
+            }
+        } catch (e) { console.error('admin shortcut check failed', e); }
         window.addEventListener('error', (ev) => {
             console.error('Runtime error caught:', ev.error || ev.message || ev);
-            try {
-                modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-xl"><h3 class="text-xl font-bold mb-2">Runtime Error</h3><pre style="white-space:pre-wrap;">${(ev.error && ev.error.stack) || ev.message || ev}</pre><div class="mt-4"><button onclick="document.getElementById('modal-container').innerHTML=''" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`;
-            } catch (e) { /* ignore */ }
+            try { document.getElementById('modal-container').innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-xl"><h3 class="text-xl font-bold mb-2">Runtime Error</h3><pre style="white-space:pre-wrap;">${(ev.error && ev.error.stack) || ev.message || ev}</pre><div class="mt-4"><button onclick="document.getElementById('modal-container').innerHTML='';" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`; } catch (e) { }
         });
         window.addEventListener('unhandledrejection', (ev) => {
             console.error('Unhandled rejection:', ev.reason);
-            try {
-                modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-xl"><h3 class="text-xl font-bold mb-2">Unhandled Rejection</h3><pre style="white-space:pre-wrap;">${ev.reason && ev.reason.stack ? ev.reason.stack : JSON.stringify(ev.reason)}</pre><div class="mt-4"><button onclick="document.getElementById('modal-container').innerHTML=''" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`;
-            } catch (e) { /* ignore */ }
+            try { document.getElementById('modal-container').innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-xl"><h3 class="text-xl font-bold mb-2">Unhandled Rejection</h3><pre style="white-space:pre-wrap;">${ev.reason && ev.reason.stack ? ev.reason.stack : JSON.stringify(ev.reason)}</pre><div class="mt-4"><button onclick="document.getElementById('modal-container').innerHTML='';" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`; } catch (e) { }
         });
-        // Add these script tags in the head to load compat libs (we add them dynamically here in case
-        // the page is served as file:// so ordering is preserved).
+
         const addFirebaseScripts = () => {
             const head = document.getElementsByTagName('head')[0];
-            const s1 = document.createElement('script');
-            s1.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js';
-            head.appendChild(s1);
-            const s2 = document.createElement('script');
-            s2.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js';
-            head.appendChild(s2);
-            const s3 = document.createElement('script');
-            s3.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js';
-            head.appendChild(s3);
-            // storage SDK intentionally omitted: image upload feature removed, using image URL only
+            const s1 = document.createElement('script'); s1.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js'; head.appendChild(s1);
+            const s2 = document.createElement('script'); s2.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js'; head.appendChild(s2);
+            // auth compat not needed on public page; admin.html handles authentication
         };
         addFirebaseScripts();
 
@@ -355,169 +302,60 @@
             appId: "1:928716547519:web:10f2e2cd1d84e1f5ca2d0a"
         };
 
-        // initialize firebase once the compat scripts are loaded
         const waitForFirebase = () => new Promise(resolve => {
-            const check = () => {
-                if (window.firebase && window.firebase.firestore) return resolve();
-                setTimeout(check, 50);
-            };
+            const check = () => { if (window.firebase && window.firebase.firestore) return resolve(); setTimeout(check, 50); };
             check();
         });
+
         await waitForFirebase();
         firebase.initializeApp(firebaseConfig);
         const firestore = firebase.firestore();
-        const auth = firebase.auth();
-    console.log('Firebase compat initialized, firestore ready:', !!firestore, 'auth ready:', !!auth);
+        console.log('Firebase compat initialized (public page), firestore ready:', !!firestore);
 
-        // Auth state listener + admin claim check
-        const checkAdminClaims = async (user) => {
-            try {
-                if (!user) {
-                    appState.isAdmin = false;
-                    return false;
-                }
-                const idTokenResult = await user.getIdTokenResult(true);
-                appState.isAdmin = !!(idTokenResult && idTokenResult.claims && idTokenResult.claims.admin === true);
-                console.log('Admin claim:', appState.isAdmin, idTokenResult.claims);
-                return appState.isAdmin;
-            } catch (err) {
-                console.error('Failed to check admin claims:', err);
-                appState.isAdmin = false;
-                return false;
-            }
-        };
+        // lightweight cache for read-only data
+        let dbCache = { categories: [], learningPaths: [], tools: [], comments: [] };
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                // refresh token and check claims, then update UI
-                checkAdminClaims(user).then(() => {
-                    appState.isLoggedIn = true;
-                    updateUIAfterAuthChange(true, user);
-                    // If currently on login page, go to admin dashboard
-                    if (appState.currentPage === 'login' || appState.currentPage.startsWith('admin')) navigateTo('admin-dashboard');
-                });
-            } else {
-                appState.isLoggedIn = false;
-                appState.isAdmin = false;
-                updateUIAfterAuthChange(false, null);
-            }
-        });
+        const appState = { currentPage: 'home', dataLoaded: false };
 
-        // =================================================================
-        // DATABASE CACHE (untuk data yang jarang berubah)
-        // =================================================================
-        let dbCache = {
-            categories: [],
-            learningPaths: [],
-            tools: [],
-            comments: []
-        };
-
-        // =================================================================
-        // STATE APLIKASI
-        // =================================================================
-        const appState = {
-            currentPage: 'home',
-            currentAdminPage: 'dashboard',
-            isLoggedIn: false,
-            isAdmin: false,
-            dataLoaded: false,
-        };
-
-        // =================================================================
-        // ELEMEN DOM
-        // =================================================================
         const pageContent = document.getElementById('page-content');
         const mainHeader = document.getElementById('main-header');
         const mobileMenu = document.getElementById('mobile-menu');
         const mobileMenuButton = document.getElementById('mobile-menu-button');
         const modalContainer = document.getElementById('modal-container');
 
-        // =================================================================
-        // FUNGSI AKSES DATA (FIREBASE)
-        // =================================================================
         const fetchCollection = async (collectionName) => {
             const snapshot = await firestore.collection(collectionName).get();
             return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         };
-        
+
         const loadInitialData = async () => {
             if (appState.dataLoaded) return;
             try {
                 const [categories, learningPaths, tools, comments] = await Promise.all([
-                    fetchCollection('categories'),
-                    fetchCollection('learningPaths'),
-                    fetchCollection('tools'),
-                    fetchCollection('comments')
+                    fetchCollection('categories'), fetchCollection('learningPaths'), fetchCollection('tools'), fetchCollection('comments')
                 ]);
-                dbCache.categories = categories;
-                dbCache.learningPaths = learningPaths;
-                dbCache.tools = tools;
-                dbCache.comments = comments;
+                dbCache.categories = categories; dbCache.learningPaths = learningPaths; dbCache.tools = tools; dbCache.comments = comments;
                 appState.dataLoaded = true;
-            } catch (error) {
-                console.error("Gagal memuat data awal:", error);
+            } catch (err) {
+                console.error('Gagal memuat data awal:', err);
                 pageContent.innerHTML = `<p class="text-center text-red-500 p-8">Gagal terhubung ke database. Pastikan aturan keamanan Firestore sudah benar.</p>`;
-                modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-xl"><h3 class="text-lg font-bold mb-2">Koneksi Firestore Gagal</h3><pre style="white-space:pre-wrap;">${error && error.message ? error.message : JSON.stringify(error)}</pre><div class="mt-4"><button onclick="document.getElementById('modal-container').innerHTML=''" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`;
             }
         };
 
-        // Helper: Format error and detect permission issues
-        const isPermissionDenied = (err) => {
-            if (!err) return false;
-            const code = err.code || '';
-            const msg = (err.message || '').toLowerCase();
-            return code === 'permission-denied' || msg.includes('missing or insufficient') || msg.includes('permission');
-        };
-
-        const showFirestorePermissionModal = (collectionName = '') => {
-            const projectId = firebaseConfig && firebaseConfig.projectId ? firebaseConfig.projectId : '<project-id>';
-            const suggestedRules = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    // Untuk pengujian cepat: izinkan user terautentikasi menulis ke koleksi yang diperlukan\n    match /${collectionName}/{docId} {\n      allow read, write: if request.auth != null;\n    }\n  }\n}`;
-            modalContainer.innerHTML = `
-                <div class="modal-overlay">
-                    <div class="bg-white rounded-lg p-6 max-w-2xl">
-                        <h3 class="text-xl font-bold mb-2">Akses Ditolak oleh Firestore</h3>
-                        <p class="text-gray-700">Operasi tulis (add/edit/delete) ditolak oleh aturan keamanan Firestore untuk koleksi <strong>${collectionName || '[semua koleksi terkait]'}</strong>.</p>
-                        <p class="mt-3 text-sm text-gray-600">Beberapa solusi cepat:</p>
-                        <ol class="list-decimal list-inside text-sm text-gray-700 mt-2 space-y-2">
-                            <li>Buka Firebase Console &rarr; Firestore &rarr; Rules dan tambahkan aturan sementara yang mengizinkan <code>request.auth != null</code> untuk koleksi yang ingin Anda ubah.</li>
-                            <li>Untuk produksi, gunakan custom claims (mis. <code>admin:true</code>) dan periksa <code>request.auth.token.admin == true</code> di rules.</li>
-                            <li>Jika belum, pastikan Anda sudah login dengan akun email/password yang terdaftar di Authentication.</li>
-                        </ol>
-                        <div class="mt-4">
-                            <p class="text-sm font-semibold">Contoh aturan singkat (gunakan untuk testing):</p>
-                            <pre class="mt-2 p-3 bg-gray-100 rounded text-sm" style="white-space:pre-wrap;">${suggestedRules}</pre>
-                            <p class="text-sm mt-2">Buka: <a class="text-blue-600 underline" href="https://console.firebase.google.com/project/${projectId}/firestore/rules" target="_blank">Firebase Console &gt; Firestore &gt; Rules</a></p>
-                        </div>
-                        <div class="mt-4 flex justify-end gap-3"><button id="close-perm-modal" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div>
-                    </div>
-                </div>`;
-            document.getElementById('close-perm-modal').addEventListener('click', () => { modalContainer.innerHTML = ''; });
-        };
-
-        // =================================================================
-        // HELPER FUNCTIONS
-        // =================================================================
-        const getCategoryName = (id) => dbCache.categories.find(c => c.id === id)?.name || 'Tanpa Kategori';
-
-        // Helper: extract YouTube video id from common URL patterns
         const extractYouTubeId = (url) => {
             if (!url) return null;
             try {
-                // common forms: https://www.youtube.com/watch?v=ID, https://youtu.be/ID, embed, with params
                 const u = url.trim();
-                const m1 = u.match(/[?&]v=([a-zA-Z0-9_-]{6,})/);
-                if (m1 && m1[1]) return m1[1];
-                const m2 = u.match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/);
-                if (m2 && m2[1]) return m2[1];
-                const m3 = u.match(/embed\/([a-zA-Z0-9_-]{6,})/);
-                if (m3 && m3[1]) return m3[1];
+                const m1 = u.match(/[?&]v=([a-zA-Z0-9_-]{6,})/); if (m1 && m1[1]) return m1[1];
+                const m2 = u.match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/); if (m2 && m2[1]) return m2[1];
+                const m3 = u.match(/embed\/([a-zA-Z0-9_-]{6,})/); if (m3 && m3[1]) return m3[1];
                 return null;
             } catch (e) { return null; }
         };
+        const isYouTubeUrl = (url) => !!extractYouTubeId(url);
 
-    const isYouTubeUrl = (url) => !!extractYouTubeId(url);
-        
+        const getCategoryName = (id) => dbCache.categories.find(c => c.id === id)?.name || 'Tanpa Kategori';
+
         const renderArticleCard = (article) => {
             const hasImage = article.image && String(article.image).trim() !== '';
             const categoryName = getCategoryName(article.categoryId);
@@ -533,7 +371,6 @@
                     </div>
                 </div>`;
             }
-            // Placeholder card for articles without image: center title and show category as text
             return `
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
                     <div class="w-full h-48 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
@@ -548,7 +385,7 @@
                     </div>
                 </div>`;
         };
-        
+
         const renderPathCard = (path) => `
             <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row items-center transform hover:shadow-2xl transition-shadow duration-300">
                  <img src="${path.image}" alt="${path.title}" class="w-full md:w-1/3 h-48 md:h-full object-cover">
@@ -559,51 +396,27 @@
                  </div>
             </div>
         `;
-        
-        // =================================================================
-        // FUNGSI RENDER HALAMAN PUBLIK
-        // =================================================================
 
         const renderHomePage = async () => {
             pageContent.innerHTML = document.getElementById('home-page-template').innerHTML;
             const articles = await fetchCollection('articles');
-            
-            const latestArticlesContainer = document.getElementById('latest-articles');
-            const featuredPathsContainer = document.getElementById('featured-paths');
-            
-            latestArticlesContainer.innerHTML = articles.slice(0, 3).map(renderArticleCard).join('');
-            featuredPathsContainer.innerHTML = dbCache.learningPaths.slice(0, 2).map(renderPathCard).join('');
+            document.getElementById('latest-articles').innerHTML = articles.slice(0,3).map(renderArticleCard).join('');
+            document.getElementById('featured-paths').innerHTML = dbCache.learningPaths.slice(0,2).map(renderPathCard).join('');
         };
-        
+
         const renderBlogPage = async (articlesToRender = null) => {
-             pageContent.innerHTML = document.getElementById('blog-page-template').innerHTML;
-             const grid = document.getElementById('articles-grid');
-             const noResults = document.getElementById('no-results');
-             const categoryFilter = document.getElementById('category-filter');
-             
-             categoryFilter.innerHTML = `<option value="all">Semua Kategori</option>` + 
-                dbCache.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-
-             const articles = articlesToRender || await fetchCollection('articles');
-
-             if(articles.length > 0) {
-                 grid.innerHTML = articles.map(renderArticleCard).join('');
-                 grid.classList.remove('hidden');
-                 noResults.classList.add('hidden');
-             } else {
-                 grid.classList.add('hidden');
-                 noResults.classList.remove('hidden');
-             }
-             
-             document.getElementById('search-input').addEventListener('input', handleFilterAndSearch);
-             document.getElementById('category-filter').addEventListener('change', handleFilterAndSearch);
+            pageContent.innerHTML = document.getElementById('blog-page-template').innerHTML;
+            const grid = document.getElementById('articles-grid'); const noResults = document.getElementById('no-results'); const categoryFilter = document.getElementById('category-filter');
+            categoryFilter.innerHTML = `<option value="all">Semua Kategori</option>` + dbCache.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+            const articles = articlesToRender || await fetchCollection('articles');
+            if (articles.length > 0) { grid.innerHTML = articles.map(renderArticleCard).join(''); grid.classList.remove('hidden'); noResults.classList.add('hidden'); }
+            else { grid.classList.add('hidden'); noResults.classList.remove('hidden'); }
+            document.getElementById('search-input').addEventListener('input', handleFilterAndSearch);
+            document.getElementById('category-filter').addEventListener('change', handleFilterAndSearch);
         };
 
         const handleFilterAndSearch = async () => {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const categoryId = document.getElementById('category-filter').value;
-            const allArticles = await fetchCollection('articles');
-            
+            const searchTerm = document.getElementById('search-input').value.toLowerCase(); const categoryId = document.getElementById('category-filter').value; const allArticles = await fetchCollection('articles');
             const filtered = allArticles.filter(article => {
                 const matchesSearch = article.title.toLowerCase().includes(searchTerm) || article.excerpt.toLowerCase().includes(searchTerm);
                 const matchesCategory = categoryId === 'all' || article.categoryId == categoryId;
@@ -611,811 +424,59 @@
             });
             renderBlogPage(filtered);
         };
-        
+
         const renderArticlePage = async (id) => {
-            const articleRef = await firestore.collection('articles').doc(id).get();
-            if (!articleRef.exists) {
-                navigateTo('home');
-                return;
-            }
+            const articleRef = await firestore.collection('articles').doc(id).get(); if (!articleRef.exists) { navigateTo('home'); return; }
             const article = { id: articleRef.id, ...articleRef.data() };
-            
-            pageContent.innerHTML = document.getElementById('article-page-template').innerHTML;
-            const wrapper = document.getElementById('article-content-wrapper');
+            pageContent.innerHTML = document.getElementById('article-page-template').innerHTML; const wrapper = document.getElementById('article-content-wrapper');
             const date = (article.date && typeof article.date.toDate === 'function') ? article.date.toDate() : new Date(article.date);
-            
             const categoryName = getCategoryName(article.categoryId);
             wrapper.innerHTML = `
                 <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
                 <h1 class="text-3xl md:text-4xl font-bold mt-2 mb-4">${article.title}</h1>
-                <div class="text-gray-500 text-sm mb-6">
-                    <span>Oleh ${article.author}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                </div>
+                <div class="text-gray-500 text-sm mb-6"><span>Oleh ${article.author}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
                 ${article.image && String(article.image).trim() !== '' ? `<img src="${article.image}" alt="${article.title}" class="w-full rounded-lg mb-8">` : `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg"><h2 class="text-2xl font-bold">${article.title}</h2></div>`}
                 <div class="prose max-w-none">${article.content}</div>
             `;
-            
-            const tocList = document.getElementById('toc-list');
-            const headings = wrapper.querySelectorAll('h2');
-            tocList.innerHTML = '';
-            if (headings.length > 0) {
-                headings.forEach((h, index) => {
-                    h.id = `section-${index}`;
-                    tocList.innerHTML += `<li><a href="#${h.id}" class="hover:text-blue-600">${h.textContent}</a></li>`;
-                });
-                tocList.parentElement.style.display = 'block';
-            } else {
-                tocList.parentElement.style.display = 'none';
-            }
+            const tocList = document.getElementById('toc-list'); const headings = wrapper.querySelectorAll('h2'); tocList.innerHTML = '';
+            if (headings.length > 0) { headings.forEach((h,i) => { h.id = `section-${i}`; tocList.innerHTML += `<li><a href="#${h.id}" class="hover:text-blue-600">${h.textContent}</a></li>`; }); tocList.parentElement.style.display = 'block'; }
+            else { tocList.parentElement.style.display = 'none'; }
         };
 
         const renderToolPage = async (id) => {
-            const docSnap = await firestore.collection('tools').doc(id).get();
-            if (!docSnap.exists) { navigateTo('tools'); return; }
+            const docSnap = await firestore.collection('tools').doc(id).get(); if (!docSnap.exists) { navigateTo('tools'); return; }
             const tool = { id: docSnap.id, ...docSnap.data() };
-            pageContent.innerHTML = `
-                <div class="container mx-auto px-6 py-12 fade-in">
-                    <h1 class="text-3xl font-bold mb-4">${tool.title}</h1>
-                    <p class="text-gray-600 mb-6">${tool.description || ''}</p>
-                    <div class="grid md:grid-cols-2 gap-6" id="tool-videos-list">
-                    </div>
-                </div>
-            `;
-            const list = document.getElementById('tool-videos-list');
-            const videos = tool.videos || [];
-            if (videos.length === 0) {
-                list.innerHTML = `<div class="col-span-2 text-center text-gray-500">Tidak ada video untuk materi ini.</div>`;
-                return;
-            }
-            // render small numbered thumbnails; clicking opens modal player
-            list.innerHTML = videos.map((v, i) => {
-                const vid = extractYouTubeId(v);
-                const thumb = vid ? `https://img.youtube.com/vi/${vid}/mqdefault.jpg` : 'https://placehold.co/160x90/E2E8F0/333?text=No+Image';
-                return `<div class="bg-white rounded-lg shadow p-4 flex items-center gap-4"><div class="w-36 h-20 relative"><img src="${thumb}" class="w-full h-full object-cover rounded cursor-pointer video-thumb-item" data-video="${v}" data-vid="${vid || ''}" onerror="this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image'"></div><div class="flex-1"><div class="text-sm font-semibold">${i+1}. ${tool.title || ''}</div><div class="text-xs text-gray-500 mt-1">${v}</div></div></div>`;
-            }).join('');
-            // attach click listeners
-            list.querySelectorAll('.video-thumb-item').forEach(img => {
-                img.addEventListener('click', () => {
-                    const v = img.dataset.video;
-                    const vid = img.dataset.vid;
-                    showVideoPlayer(vid || v);
-                });
-            });
+            pageContent.innerHTML = `<div class="container mx-auto px-6 py-12 fade-in"><h1 class="text-3xl font-bold mb-4">${tool.title}</h1><p class="text-gray-600 mb-6">${tool.description || ''}</p><div class="grid md:grid-cols-2 gap-6" id="tool-videos-list"></div></div>`;
+            const list = document.getElementById('tool-videos-list'); const videos = tool.videos || [];
+            if (videos.length === 0) { list.innerHTML = `<div class="col-span-2 text-center text-gray-500">Tidak ada video untuk materi ini.</div>`; return; }
+            list.innerHTML = videos.map((v,i) => { const vid = extractYouTubeId(v); const thumb = vid ? `https://img.youtube.com/vi/${vid}/mqdefault.jpg` : 'https://placehold.co/160x90/E2E8F0/333?text=No+Image'; return `<div class="bg-white rounded-lg shadow p-4 flex items-center gap-4"><div class="w-36 h-20 relative"><img src="${thumb}" class="w-full h-full object-cover rounded cursor-pointer video-thumb-item" data-video="${v}" data-vid="${vid || ''}" onerror="this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image'"></div><div class="flex-1"><div class="text-sm font-semibold">${i+1}. ${tool.title || ''}</div><div class="text-xs text-gray-500 mt-1">${v}</div></div></div>`; }).join('');
+            list.querySelectorAll('.video-thumb-item').forEach(img => img.addEventListener('click', () => { const v = img.dataset.video; const vid = img.dataset.vid; showVideoPlayer(vid || v); }));
         };
 
         const showVideoPlayer = (idOrUrl) => {
-            // if an id is passed just use it, otherwise try extract
-            const id = extractYouTubeId(idOrUrl) || idOrUrl;
-            const src = `https://www.youtube.com/embed/${id}`;
-            modalContainer.innerHTML = `
-                <div class="modal-overlay">
-                    <div class="bg-black/80 p-6 rounded-lg max-w-3xl w-full">
-                        <div style="position:relative;width:100%;padding-top:56.25%;">
-                            <iframe src="${src}" frameborder="0" allowfullscreen style="position:absolute;left:0;top:0;width:100%;height:100%;"></iframe>
-                        </div>
-                        <div class="mt-4 text-right"><button id="close-video-player" class="bg-white text-black py-1 px-3 rounded">Tutup</button></div>
-                    </div>
-                </div>`;
+            const id = extractYouTubeId(idOrUrl) || idOrUrl; const src = `https://www.youtube.com/embed/${id}`;
+            modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-black/80 p-6 rounded-lg max-w-3xl w-full"><div style="position:relative;width:100%;padding-top:56.25%;"><iframe src="${src}" frameborder="0" allowfullscreen style="position:absolute;left:0;top:0;width:100%;height:100%;"></iframe></div><div class="mt-4 text-right"><button id="close-video-player" class="bg-white text-black py-1 px-3 rounded">Tutup</button></div></div></div>`;
             document.getElementById('close-video-player').addEventListener('click', () => { modalContainer.innerHTML = ''; });
         };
-        
-        const renderPathsPage = () => {
-            pageContent.innerHTML = document.getElementById('paths-page-template').innerHTML;
-            document.getElementById('paths-list').innerHTML = dbCache.learningPaths.map(renderPathCard).join('');
-        };
-        
-        const renderAboutPage = () => {
-            pageContent.innerHTML = document.getElementById('about-page-template').innerHTML;
-        };
 
+        const renderPathsPage = () => { pageContent.innerHTML = document.getElementById('paths-page-template').innerHTML; document.getElementById('paths-list').innerHTML = dbCache.learningPaths.map(renderPathCard).join(''); };
+        const renderAboutPage = () => { pageContent.innerHTML = document.getElementById('about-page-template').innerHTML; };
         const renderToolsPage = () => {
-            pageContent.innerHTML = document.getElementById('tools-page-template').innerHTML;
-                        const list = document.getElementById('tools-list');
-                        list.innerHTML = dbCache.tools.map(tool => {
-                                const title = tool.title || tool.name || 'Untitled Tool';
-                                const description = tool.description || '';
-                                const firstVideo = (tool.videos && tool.videos[0]) || '';
-                                const videoId = extractYouTubeId(firstVideo);
-                                const thumb = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : 'https://placehold.co/600x400/E2E8F0/333?text=No+Image';
-                                // make the entire card a clickable nav-link to tool detail
-                                return `
-                                <a href="#" class="nav-link block">
-                                    <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                                        <div class="relative w-full h-40 bg-center bg-cover" style="background-image: url('${thumb}');">
-                                            <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                                                <h3 class="text-white font-bold text-lg px-4 text-center">${title}</h3>
-                                            </div>
-                                        </div>
-                                        <div class="p-6 text-center">
-                                            <p class="text-gray-600 text-sm mb-2">${description}</p>
-                                        </div>
-                                    </div>
-                                </a>`;
-                        }).join('');
-                        // after rendering, attach data-page and data-id to each nav-link child so delegated click works
-                        const nodes = list.querySelectorAll('a.nav-link');
-                        nodes.forEach((a, idx) => { const t = dbCache.tools[idx]; a.dataset.page = 'tool'; a.dataset.id = t.id; });
-        };
+            pageContent.innerHTML = document.getElementById('tools-page-template').innerHTML; const list = document.getElementById('tools-list'); list.innerHTML = dbCache.tools.map((tool,idx) => { const title = tool.title || tool.name || 'Untitled Tool'; const description = tool.description || ''; const firstVideo = (tool.videos && tool.videos[0]) || ''; const videoId = extractYouTubeId(firstVideo); const thumb = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : 'https://placehold.co/600x400/E2E8F0/333?text=No+Image'; return `<a href="#" class="nav-link block" data-page="tool" data-id="${tool.id}"><div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300"><div class="relative w-full h-40 bg-center bg-cover" style="background-image: url('${thumb}');"><div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"><h3 class="text-white font-bold text-lg px-4 text-center">${title}</h3></div></div><div class="p-6 text-center"><p class="text-gray-600 text-sm mb-2">${description}</p></div></div></a>`; }).join(''); };
 
-        const renderAdminLoginPage = () => {
-            mainHeader.classList.add('hidden');
-            pageContent.innerHTML = document.getElementById('admin-login-page-template').innerHTML;
-            document.getElementById('admin-login-form').addEventListener('submit', handleAdminLogin);
-        };
-        
-        // =================================================================
-        // FUNGSI MODAL (CRUD)
-        // =================================================================
-        const hideModal = () => modalContainer.innerHTML = '';
+        const renderPage = async (page, id=null) => { switch(page){ case 'home': await renderHomePage(); break; case 'blog': await renderBlogPage(); break; case 'article': await renderArticlePage(id); break; case 'tool': await renderToolPage(id); break; case 'paths': renderPathsPage(); break; case 'about': renderAboutPage(); break; case 'tools': renderToolsPage(); break; default: await renderHomePage(); } lucide.createIcons(); };
 
-        const showArticleModal = async (articleId = null) => {
-            const isEditing = articleId !== null;
-            let article = {};
-            if (isEditing) {
-                const articleRef = await firestore.collection('articles').doc(articleId).get();
-                if (articleRef.exists) article = { id: articleRef.id, ...articleRef.data() };
-            }
-            const modalTitle = isEditing ? 'Edit Artikel' : 'Tambah Artikel Baru';
+        const navigateTo = async (page, id = null) => { appState.currentPage = page; window.scrollTo(0,0); if (!appState.dataLoaded) await loadInitialData(); mainHeader.classList.remove('hidden'); await renderPage(page,id); };
 
-            const categoryOptions = dbCache.categories.map(c => 
-                `<option value="${c.id}" ${article.categoryId === c.id ? 'selected' : ''}>${c.name}</option>`
-            ).join('');
-
-            modalContainer.innerHTML = `
-            <div class="modal-overlay">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                        <h3 class="text-2xl font-bold">${modalTitle}</h3>
-                        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-                    </div>
-                    <form id="article-form" class="p-6 space-y-4">
-                        <input type="hidden" name="id" value="${article.id || ''}">
-                        <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.title || ''}" required></div>
-                        <div><label class="block text-sm font-medium">Kategori</label><select name="categoryId" class="mt-1 w-full border-gray-300 rounded-md shadow-sm bg-white" required>${categoryOptions}</select></div>
-                        <div>
-                            <label class="block text-sm font-medium">URL Gambar (opsional)</label>
-                            <input type="text" name="image" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.image || ''}">
-                            <p class="text-xs text-gray-500 mt-1">Masukkan URL gambar jika ingin menampilkan gambar pada artikel. Jika kosong, kartu artikel akan menampilkan judul di tengah dan menunjukkan nama kategori.</p>
-                        </div>
-                        <div><label class="block text-sm font-medium">Kutipan</label><textarea name="excerpt" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.excerpt || ''}</textarea></div>
-                        <div><label class="block text-sm font-medium">Konten (HTML)</label><textarea name="content" rows="10" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.content ? article.content.trim() : ''}</textarea></div>
-                        <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
-                    </form>
-                </div>
-            </div>`;
-            document.getElementById('article-form').addEventListener('submit', handleArticleFormSubmit);
-            document.getElementById('close-modal-btn').addEventListener('click', hideModal);
-            document.getElementById('cancel-modal-btn').addEventListener('click', hideModal);
-        };
-        
-        const handleArticleFormSubmit = async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const articleId = formData.get('id');
-            const articleData = {
-                title: formData.get('title'),
-                categoryId: formData.get('categoryId'),
-                image: formData.get('image'),
-                excerpt: formData.get('excerpt'),
-                content: formData.get('content'),
-                author: 'Admin',
-                // include authorId so Firestore rules can enforce owner-based updates
-                authorId: (auth && auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : null,
-                slug: formData.get('title').toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
-            };
-            // Image upload removed: use only the provided image URL (if any)
-            try {
-                if (!articleId) {
-                    articleData.date = firebase.firestore.Timestamp.now();
-                    await firestore.collection('articles').add(articleData);
-                } else {
-                    await firestore.collection('articles').doc(articleId).update(articleData);
-                }
-                hideModal();
-                await renderAdminPanel('articles');
-            } catch (error) {
-                console.error("Gagal menyimpan artikel:", error);
-                if (isPermissionDenied(error)) {
-                    showFirestorePermissionModal('articles');
-                } else {
-                    modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${error && error.message ? error.message : JSON.stringify(error)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
-                    document.getElementById('close-save-error').addEventListener('click', () => hideModal());
-                }
-            }
-        };
-
-        const showCategoryModal = (categoryId = null) => {
-            const isEditing = categoryId !== null;
-            const category = isEditing ? dbCache.categories.find(c => c.id === categoryId) : {};
-            const modalTitle = isEditing ? 'Edit Kategori' : 'Tambah Kategori Baru';
-
-            modalContainer.innerHTML = `
-            <div class="modal-overlay">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-                    <div class="p-6 border-b flex justify-between items-center"><h3 class="text-2xl font-bold">${modalTitle}</h3><button id="close-modal-btn" class="text-3xl">&times;</button></div>
-                    <form id="category-form" class="p-6 space-y-4">
-                        <input type="hidden" name="id" value="${category.id || ''}">
-                        <div><label class="block text-sm font-medium">Nama Kategori</label><input type="text" name="name" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${category.name || ''}" required></div>
-                        <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
-                    </form>
-                </div>
-            </div>`;
-            document.getElementById('category-form').addEventListener('submit', handleCategoryFormSubmit);
-            document.getElementById('close-modal-btn').addEventListener('click', hideModal);
-            document.getElementById('cancel-modal-btn').addEventListener('click', hideModal);
-        };
-        
-        const handleCategoryFormSubmit = async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const categoryId = formData.get('id');
-            const categoryData = { name: formData.get('name') };
-            try {
-                console.log('handleCategoryFormSubmit: saving', categoryData);
-                if (typeof firestore === 'undefined' || !firestore) {
-                    throw new Error('Firestore belum terinisialisasi.');
-                }
-                if (!categoryId) {
-                    const ref = await firestore.collection('categories').add(categoryData);
-                    console.log('Kategori ditambahkan, id=', ref.id);
-                } else {
-                    await firestore.collection('categories').doc(categoryId).update(categoryData);
-                    console.log('Kategori diperbarui, id=', categoryId);
-                }
-                dbCache.categories = await fetchCollection('categories');
-                hideModal();
-                // provide quick visual confirmation
-                modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md text-center"><h3 class="text-lg font-bold mb-2">Berhasil</h3><p>Kategori berhasil disimpan.</p><div class="mt-4"><button id="close-save-success" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`;
-                document.getElementById('close-save-success').addEventListener('click', () => { hideModal(); renderAdminPanel('categories'); });
-            } catch (error) {
-                console.error('Gagal menyimpan kategori:', error);
-                if (isPermissionDenied(error)) {
-                    showFirestorePermissionModal('categories');
-                } else {
-                    modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${error && error.message ? error.message : JSON.stringify(error)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
-                    document.getElementById('close-save-error').addEventListener('click', () => hideModal());
-                }
-            }
-        };
-
-        // =================================================================
-        // TOOLS (Video) MODAL & HANDLERS
-        // =================================================================
-        const showToolModal = async (toolId = null) => {
-            const isEditing = toolId !== null;
-            let tool = {};
-            if (isEditing) {
-                const docSnap = await firestore.collection('tools').doc(toolId).get();
-                if (docSnap.exists) tool = { id: docSnap.id, ...docSnap.data() };
-            }
-            const modalTitle = isEditing ? 'Edit Tool (Video)' : 'Tambah Tool (Video)';
-
-            modalContainer.innerHTML = `
-            <div class="modal-overlay">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                        <h3 class="text-2xl font-bold">${modalTitle}</h3>
-                        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-                    </div>
-                    <form id="tool-form" class="p-6 space-y-4">
-                        <input type="hidden" name="id" value="${tool.id || ''}">
-                        <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${tool.title || ''}" required></div>
-                        <div><label class="block text-sm font-medium">Deskripsi Singkat</label><textarea name="description" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">${tool.description || ''}</textarea></div>
-                        <div>
-                            <label class="block text-sm font-medium">Video YouTube</label>
-                            <div id="video-rows" class="space-y-2 mt-2">
-                                <!-- rows inserted here -->
-                            </div>
-                            <div class="mt-2">
-                                <button type="button" id="add-video-row" class="bg-green-500 text-white px-3 py-1 rounded">Tambah URL Video</button>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-2">Satu URL per input. Anda bisa menambah beberapa URL dengan tombol "Tambah URL Video".</p>
-                        </div>
-                        <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
-                    </form>
-                </div>
-            </div>`;
-            const rowsContainer = document.getElementById('video-rows');
-            const addRow = (value = '') => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'space-y-1';
-                // thumb placeholder
-                const inputId = 'video-input-' + (Date.now() + Math.floor(Math.random()*1000));
-                wrapper.innerHTML = `
-                    <div class="flex items-start gap-2">
-                        <input id="${inputId}" type="text" name="video-url" value="${value}" placeholder="https://www.youtube.com/watch?v=..." class="flex-1 border rounded px-3 py-2" />
-                        <img class="video-thumb w-28 h-16 rounded object-cover border" src="https://placehold.co/120x90/E2E8F0/333?text=Preview" style="display:none" />
-                        <button type="button" class="remove-video-row bg-red-500 text-white px-2 py-1 rounded">Hapus</button>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-red-500 text-xs hidden error-msg">URL YouTube tidak valid</span>
-                    </div>
-                `;
-                rowsContainer.appendChild(wrapper);
-                const input = wrapper.querySelector('input[name="video-url"]');
-                const thumb = wrapper.querySelector('.video-thumb');
-                const errorMsg = wrapper.querySelector('.error-msg');
-
-                const updatePreview = () => {
-                    const v = input.value.trim();
-                    const id = extractYouTubeId(v);
-                    if (id) {
-                        thumb.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-                        thumb.style.display = 'block';
-                        errorMsg.classList.add('hidden');
-                        input.classList.remove('border-red-500');
-                    } else if (v === '') {
-                        thumb.style.display = 'none';
-                        errorMsg.classList.add('hidden');
-                        input.classList.remove('border-red-500');
-                    } else {
-                        thumb.style.display = 'none';
-                        errorMsg.classList.remove('hidden');
-                        input.classList.add('border-red-500');
-                    }
-                };
-
-                input.addEventListener('input', updatePreview);
-                // initial preview state
-                updatePreview();
-
-                wrapper.querySelector('.remove-video-row').addEventListener('click', () => wrapper.remove());
-            };
-            // populate existing videos if editing
-            if (tool.videos && Array.isArray(tool.videos) && tool.videos.length > 0) {
-                tool.videos.forEach(v => addRow(v));
-            } else {
-                addRow('');
-            }
-            document.getElementById('add-video-row').addEventListener('click', () => addRow(''));
-            document.getElementById('tool-form').addEventListener('submit', handleToolFormSubmit);
-            document.getElementById('close-modal-btn').addEventListener('click', hideModal);
-            document.getElementById('cancel-modal-btn').addEventListener('click', hideModal);
-        };
-
-        const handleToolFormSubmit = async (e) => {
-            e.preventDefault();
-            const form = new FormData(e.target);
-            const id = form.get('id');
-            const title = form.get('title');
-            const description = form.get('description');
-            // collect all inputs with name 'video-url' inside the form
-            const videoInputs = Array.from(e.target.querySelectorAll('input[name="video-url"]'));
-            const videos = videoInputs.map(i => i.value.trim()).filter(Boolean);
-            // validate all URLs are youtube links
-            const invalid = videoInputs.some(i => i.value.trim() !== '' && !isYouTubeUrl(i.value.trim()));
-            if (invalid) {
-                // mark invalid inputs (error spans already shown by input handler), and show brief modal message
-                modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md text-center"><h3 class="text-lg font-bold mb-2">URL Tidak Valid</h3><p>Beberapa URL bukan berasal dari YouTube. Periksa kembali input URL video.</p><div class="mt-4"><button id="close-invalid-video" class="bg-blue-500 text-white py-2 px-4 rounded">Tutup</button></div></div></div>`;
-                document.getElementById('close-invalid-video').addEventListener('click', () => { modalContainer.innerHTML = ''; });
-                return;
-            }
-            const data = { title, description, videos };
-            try {
-                if (!id) await firestore.collection('tools').add(data);
-                else await firestore.collection('tools').doc(id).update(data);
-                dbCache.tools = await fetchCollection('tools');
-                hideModal();
-                await renderAdminPanel('tools');
-            } catch (err) {
-                console.error('Gagal menyimpan tool:', err);
-                if (isPermissionDenied(err)) showFirestorePermissionModal('tools');
-                else modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
-            }
-        };
-
-        const showDeleteConfirmation = async (type, id) => {
-            let item;
-            let collectionName;
-            if (type === 'article') {
-                const docSnap = await firestore.collection('articles').doc(id).get();
-                if (docSnap.exists) item = docSnap.data();
-                collectionName = 'articles';
-            } else if (type === 'category') {
-                item = dbCache.categories.find(c => c.id === id);
-                collectionName = 'categories';
-            } else if (type === 'path') {
-                const docSnap = await firestore.collection('learningPaths').doc(id).get();
-                if (docSnap.exists) item = docSnap.data();
-                collectionName = 'learningPaths';
-            } else if (type === 'comment') {
-                const docSnap = await firestore.collection('comments').doc(id).get();
-                if (docSnap.exists) item = docSnap.data();
-                collectionName = 'comments';
-            }
-            if (!item) return;
-            const itemName = item.title || item.name;
-
-            modalContainer.innerHTML = `
-            <div class="modal-overlay">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                    <h3 class="text-xl font-bold mb-4">Konfirmasi Hapus</h3>
-                    <p>Apakah Anda yakin ingin menghapus "${itemName}"?</p>
-                    <div class="mt-6 flex justify-end gap-3">
-                       <button id="cancel-delete-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button>
-                       <button id="confirm-delete-btn" class="bg-red-500 text-white py-2 px-4 rounded-lg" data-id="${id}" data-collection="${collectionName}">Hapus</button>
-                    </div>
-                </div>
-            </div>`;
-            document.getElementById('cancel-delete-btn').addEventListener('click', hideModal);
-                document.getElementById('confirm-delete-btn').addEventListener('click', async (e) => {
-                const idToDelete = e.target.dataset.id;
-                const collectionToDelete = e.target.dataset.collection;
-                try {
-                    await firestore.collection(collectionToDelete).doc(idToDelete).delete();
-                } catch (err) {
-                    console.error('Gagal menghapus:', err);
-                    if (isPermissionDenied(err)) showFirestorePermissionModal(collectionToDelete);
-                    hideModal();
-                    return;
-                }
-                // Refresh caches for affected collections
-                if(collectionToDelete === 'categories') dbCache.categories = await fetchCollection('categories');
-                if(collectionToDelete === 'learningPaths') dbCache.learningPaths = await fetchCollection('learningPaths');
-                if(collectionToDelete === 'comments') dbCache.comments = await fetchCollection('comments');
-                if(collectionToDelete === 'tools') dbCache.tools = await fetchCollection('tools');
-                hideModal();
-                // If deleting from admin UI, re-render the named admin page
-                if (collectionToDelete === 'categories') await renderAdminPanel('categories');
-                else if (collectionToDelete === 'learningPaths') await renderAdminPanel('paths');
-                else if (collectionToDelete === 'comments') await renderAdminPanel('comments');
-                else if (collectionToDelete === 'articles') await renderAdminPanel('articles');
-                else await renderAdminPanel('dashboard');
-            });
-        };
-
-        // =================================================================
-        // LEARNING PATHS MODAL & HANDLERS
-        // =================================================================
-        const showPathModal = async (pathId = null) => {
-            const isEditing = pathId !== null;
-            let path = {};
-            if (isEditing) {
-                const docSnap = await firestore.collection('learningPaths').doc(pathId).get();
-                if (docSnap.exists) path = { id: docSnap.id, ...docSnap.data() };
-            }
-            const modalTitle = isEditing ? 'Edit Jalur Belajar' : 'Tambah Jalur Belajar';
-
-            modalContainer.innerHTML = `
-            <div class="modal-overlay">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                        <h3 class="text-2xl font-bold">${modalTitle}</h3>
-                        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-                    </div>
-                    <form id="path-form" class="p-6 space-y-4">
-                        <input type="hidden" name="id" value="${path.id || ''}">
-                        <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${path.title || ''}" required></div>
-                        <div><label class="block text-sm font-medium">Deskripsi Singkat</label><textarea name="description" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${path.description || ''}</textarea></div>
-                        <div><label class="block text-sm font-medium">URL Gambar</label><input type="text" name="image" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${path.image || ''}"></div>
-                        <div><label class="block text-sm font-medium">Artikel (IDs, comma separated)</label><input type="text" name="articles" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${(path.articles || []).join(',')}"></div>
-                        <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
-                    </form>
-                </div>
-            </div>`;
-            document.getElementById('path-form').addEventListener('submit', handlePathFormSubmit);
-            document.getElementById('close-modal-btn').addEventListener('click', hideModal);
-            document.getElementById('cancel-modal-btn').addEventListener('click', hideModal);
-        };
-
-        const handlePathFormSubmit = async (e) => {
-            e.preventDefault();
-            const form = new FormData(e.target);
-            const id = form.get('id');
-            const data = {
-                title: form.get('title'),
-                description: form.get('description'),
-                image: form.get('image') || 'https://placehold.co/600x400',
-                articles: form.get('articles') ? form.get('articles').split(',').map(s => s.trim()).filter(Boolean) : []
-            };
-            try {
-                if (!id) await firestore.collection('learningPaths').add(data);
-                else await firestore.collection('learningPaths').doc(id).update(data);
-                dbCache.learningPaths = await fetchCollection('learningPaths');
-                hideModal();
-                await renderAdminPanel('paths');
-            } catch (err) {
-                console.error('Gagal menyimpan jalur belajar:', err);
-                if (isPermissionDenied(err)) showFirestorePermissionModal('learningPaths');
-                else modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
-            }
-        };
-
-        // =================================================================
-        // COMMENTS MODAL & HANDLERS
-        // =================================================================
-        const showCommentModal = (commentId = null) => {
-            const comment = commentId ? dbCache.comments.find(c => c.id === commentId) : {};
-            modalContainer.innerHTML = `
-            <div class="modal-overlay">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                        <h3 class="text-2xl font-bold">Balas Komentar</h3>
-                        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-                    </div>
-                    <form id="comment-reply-form" class="p-6 space-y-4">
-                        <input type="hidden" name="id" value="${comment.id || ''}">
-                        <div><label class="block text-sm font-medium">Nama</label><input type="text" name="name" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${comment.name || ''}" disabled></div>
-                        <div><label class="block text-sm font-medium">Komentar</label><textarea rows="4" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" disabled>${comment.text || ''}</textarea></div>
-                        <div><label class="block text-sm font-medium">Balasan</label><textarea name="reply" rows="4" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">${comment.reply || ''}</textarea></div>
-                        <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan Balasan & Approve</button></div>
-                    </form>
-                </div>
-            </div>`;
-            document.getElementById('close-modal-btn').addEventListener('click', hideModal);
-            document.getElementById('cancel-modal-btn').addEventListener('click', hideModal);
-            document.getElementById('comment-reply-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const form = new FormData(e.target);
-                const id = form.get('id');
-                const reply = form.get('reply');
-                try {
-                    await firestore.collection('comments').doc(id).update({ reply, approved: true });
-                    dbCache.comments = await fetchCollection('comments');
-                    hideModal();
-                    await renderAdminPanel('comments');
-                } catch (err) {
-                    console.error('Gagal membalas komentar:', err);
-                    if (isPermissionDenied(err)) showFirestorePermissionModal('comments');
-                    else {
-                        modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan Balasan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
-                    }
-                }
-            });
-        };
-
-        // =================================================================
-        // FUNGSI RENDER PANEL ADMIN
-        // =================================================================
-        const renderAdminPanel = async (adminPage = 'dashboard') => {
-             // Guard: only admin users can access admin panel pages
-             if (!appState.isLoggedIn || !appState.isAdmin) {
-                 modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md text-center"><h3 class="text-lg font-bold mb-2">Akses Ditolak</h3><p>Halaman admin hanya dapat diakses oleh akun admin. Jika Anda sudah login coba logout lalu login kembali setelah admin claim diset.</p><div class="mt-4"><button id="close-access-denied" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
-                 document.getElementById('close-access-denied').addEventListener('click', () => { modalContainer.innerHTML = ''; navigateTo('home'); });
-                 return;
-             }
-             appState.currentAdminPage = adminPage;
-             mainHeader.classList.add('hidden');
-             pageContent.innerHTML = document.getElementById('admin-panel-page-template').innerHTML;
-             const adminContent = document.getElementById('admin-content');
-             
-             document.querySelectorAll('.admin-sidebar-link').forEach(link => {
-                 link.classList.toggle('active', link.dataset.adminPage === adminPage);
-             });
-            // Hide admin-only sidebar entries for non-admin users
-            if (!appState.isAdmin) {
-                document.querySelectorAll('.admin-sidebar-link').forEach(link => {
-                    if (['categories','paths','comments'].includes(link.dataset.adminPage)) {
-                        link.style.display = 'none';
-                    }
-                });
-            }
-             
-             if (adminPage === 'dashboard') {
-                 const articles = await fetchCollection('articles');
-                 adminContent.innerHTML = `
-                    <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
-                    <div class="grid md:grid-cols-3 gap-6">
-                        <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-500">Total Artikel</h3><p class="text-4xl font-bold">${articles.length}</p></div>
-                        <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-500">Total Kategori</h3><p class="text-4xl font-bold">${dbCache.categories.length}</p></div>
-                    </div>`;
-             } else if (adminPage === 'articles') {
-                const articles = await fetchCollection('articles');
-                adminContent.innerHTML = `
-                    <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Artikel</h1><button id="add-article-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Artikel</span></button></div>
-                    <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead><tr class="border-b"><th class="p-4">Judul</th><th class="p-4">Kategori</th><th class="p-4">Tanggal</th><th class="p-4">Aksi</th></tr></thead>
-                            <tbody>${articles.map(a => {
-                                const date = (a.date && typeof a.date.toDate === 'function') ? a.date.toDate() : new Date(a.date);
-                                return `<tr class="border-b hover:bg-gray-50"><td class="p-4">${a.title}</td><td class="p-4">${getCategoryName(a.categoryId)}</td><td class="p-4">${date.toLocaleDateString('id-ID')}</td><td class="p-4 flex gap-2"><button class="edit-article-btn text-blue-500" data-id="${a.id}"><i data-lucide="edit"></i></button><button class="delete-article-btn text-red-500" data-id="${a.id}"><i data-lucide="trash-2"></i></button></td></tr>`
-                            }).join('')}</tbody>
-                        </table>
-                    </div>`;
-                const addArticleBtn = document.getElementById('add-article-btn');
-                if (addArticleBtn) addArticleBtn.addEventListener('click', () => showArticleModal());
-             } else if (adminPage === 'categories') {
-                adminContent.innerHTML = `
-                    <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Kategori</h1><button id="add-category-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Kategori</span></button></div>
-                    <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead><tr class="border-b"><th class="p-4">ID</th><th class="p-4">Nama Kategori</th><th class="p-4">Aksi</th></tr></thead>
-                            <tbody>${dbCache.categories.map(c => `
-                                <tr class="border-b hover:bg-gray-50"><td class="p-4">${c.id}</td><td class="p-4">${c.name}</td><td class="p-4 flex gap-2"><button class="edit-category-btn text-blue-500" data-id="${c.id}"><i data-lucide="edit"></i></button><button class="delete-category-btn text-red-500" data-id="${c.id}"><i data-lucide="trash-2"></i></button></td></tr>`
-                            ).join('')}</tbody>
-                        </table>
-                    </div>`;
-                // Fallback: attach event listener directly in case delegated listener doesn't catch it
-                const addCatBtn = document.getElementById('add-category-btn');
-                if (addCatBtn) addCatBtn.addEventListener('click', () => showCategoryModal());
-             } else if (adminPage === 'paths') {
-                  const paths = await fetchCollection('learningPaths');
-                  adminContent.innerHTML = `
-                    <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Jalur Belajar</h1><button id="add-path-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Jalur</span></button></div>
-                    <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead><tr class="border-b"><th class="p-4">Judul</th><th class="p-4">Deskripsi</th><th class="p-4">Jumlah Artikel</th><th class="p-4">Aksi</th></tr></thead>
-                            <tbody>${paths.map(p => `<tr class="border-b hover:bg-gray-50"><td class="p-4">${p.title}</td><td class="p-4">${p.description}</td><td class="p-4">${(p.articles||[]).length}</td><td class="p-4 flex gap-2"><button class="edit-path-btn text-blue-500" data-id="${p.id}"><i data-lucide="edit"></i></button><button class="delete-path-btn text-red-500" data-id="${p.id}"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody>
-                        </table>
-                    </div>`;
-                const addPathBtn = document.getElementById('add-path-btn');
-                if (addPathBtn) addPathBtn.addEventListener('click', () => showPathModal());
-             } else if (adminPage === 'comments') {
-                  const comments = await fetchCollection('comments');
-                  adminContent.innerHTML = `
-                    <h1 class="text-3xl font-bold mb-6">Manajemen Komentar</h1>
-                    <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead><tr class="border-b"><th class="p-4">Nama</th><th class="p-4">Komentar</th><th class="p-4">Status</th><th class="p-4">Aksi</th></tr></thead>
-                            <tbody>${comments.map(c => `<tr class="border-b hover:bg-gray-50"><td class="p-4">${c.name}</td><td class="p-4">${c.text}</td><td class="p-4">${c.approved ? '<span class="text-green-600 font-semibold">Approved</span>' : '<span class="text-yellow-600 font-semibold">Pending</span>'}</td><td class="p-4 flex gap-2"><button class="reply-comment-btn text-blue-500" data-id="${c.id}"><i data-lucide="message-square"></i></button><button class="approve-comment-btn text-green-500" data-id="${c.id}"><i data-lucide="check-circle"></i></button><button class="delete-comment-btn text-red-500" data-id="${c.id}"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody>
-                        </table>
-                    </div>`;
-             } else if (adminPage === 'tools') {
-                  const tools = await fetchCollection('tools');
-                  adminContent.innerHTML = `
-                    <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Tools (Video)</h1><button id="add-tool-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Tool</span></button></div>
-                    <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead><tr class="border-b"><th class="p-4">Judul</th><th class="p-4">Deskripsi</th><th class="p-4"># Video</th><th class="p-4">Aksi</th></tr></thead>
-                            <tbody>${tools.map(t => `<tr class="border-b hover:bg-gray-50"><td class="p-4">${t.title}</td><td class="p-4">${t.description || ''}</td><td class="p-4">${(t.videos||[]).length}</td><td class="p-4 flex gap-2"><button class="edit-tool-btn text-blue-500" data-id="${t.id}"><i data-lucide="edit"></i></button><button class="delete-tool-btn text-red-500" data-id="${t.id}"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody>
-                        </table>
-                    </div>`;
-                 const addToolBtn = document.getElementById('add-tool-btn');
-                 if (addToolBtn) addToolBtn.addEventListener('click', () => showToolModal());
-             }
-             lucide.createIcons();
-        };
-
-        // =================================================================
-        // ROUTING & NAVIGATION
-        // =================================================================
-        const navigateTo = async (page, id = null) => {
-            appState.currentPage = page;
-            window.scrollTo(0, 0); 
-            if (!appState.dataLoaded && page !== 'login') await loadInitialData();
-            if (appState.isLoggedIn) {
-                if (page.startsWith('admin') || page === 'login') await renderAdminPanel(page.replace('admin-', ''));
-                else { mainHeader.classList.remove('hidden'); await renderPage(page, id); }
-            } else if (page.startsWith('admin')) renderAdminLoginPage();
-            else { mainHeader.classList.remove('hidden'); await renderPage(page, id); }
-            lucide.createIcons();
-        };
-
-        const renderPage = async (page, id = null) => {
-             switch (page) {
-                case 'home': await renderHomePage(); break;
-                case 'blog': await renderBlogPage(); break;
-                case 'article': await renderArticlePage(id); break;
-                case 'tool': await renderToolPage(id); break;
-                case 'paths': renderPathsPage(); break;
-                case 'about': renderAboutPage(); break;
-                case 'tools': renderToolsPage(); break;
-                case 'login': renderAdminLoginPage(); break;
-                default: await renderHomePage();
-            }
-        };
-
-        // =================================================================
-        // EVENT LISTENERS & AUTH
-        // =================================================================
-    document.body.addEventListener('click', async (e) => {
-            let target = e.target.closest('.nav-link');
+        document.body.addEventListener('click', async (e) => {
+            const target = e.target.closest('.nav-link');
             if (target) { e.preventDefault(); navigateTo(target.dataset.page, target.dataset.id); mobileMenu.classList.add('hidden'); return; }
-            
-            if (e.target.closest('#admin-login-button') || e.target.closest('#admin-login-button-mobile')) { e.preventDefault(); navigateTo('login'); return; }
-            if (e.target.closest('#admin-logout-button') || e.target.closest('#admin-logout-button-mobile')) { e.preventDefault(); handleAdminLogout(); return; }
-            
-            target = e.target.closest('.admin-sidebar-link');
-            if (target && appState.isLoggedIn) { e.preventDefault(); renderAdminPanel(target.dataset.adminPage); return; }
-
-            if (appState.isLoggedIn) {
-                if (appState.currentAdminPage === 'articles') {
-                    if (e.target.closest('#add-article-btn')) showArticleModal();
-                    const editBtn = e.target.closest('.edit-article-btn');
-                    if (editBtn) showArticleModal(editBtn.dataset.id);
-                    const deleteBtn = e.target.closest('.delete-article-btn');
-                    if (deleteBtn) showDeleteConfirmation('article', deleteBtn.dataset.id);
-                } else if (appState.currentAdminPage === 'categories') {
-                    if (e.target.closest('#add-category-btn')) showCategoryModal();
-                    const editBtn = e.target.closest('.edit-category-btn');
-                    if (editBtn) showCategoryModal(editBtn.dataset.id);
-                    const deleteBtn = e.target.closest('.delete-category-btn');
-                    if (deleteBtn) showDeleteConfirmation('category', deleteBtn.dataset.id);
-                } else if (appState.currentAdminPage === 'paths') {
-                    if (e.target.closest('#add-path-btn')) showPathModal();
-                    const editBtn = e.target.closest('.edit-path-btn');
-                    if (editBtn) showPathModal(editBtn.dataset.id);
-                    const deleteBtn = e.target.closest('.delete-path-btn');
-                    if (deleteBtn) showDeleteConfirmation('path', deleteBtn.dataset.id);
-                } else if (appState.currentAdminPage === 'comments') {
-                    const replyBtn = e.target.closest('.reply-comment-btn');
-                    if (replyBtn) showCommentModal(replyBtn.dataset.id);
-                    const approveBtn = e.target.closest('.approve-comment-btn');
-                    if (approveBtn) {
-                        try {
-                            await firestore.collection('comments').doc(approveBtn.dataset.id).update({ approved: true });
-                            dbCache.comments = await fetchCollection('comments');
-                            await renderAdminPanel('comments');
-                        } catch (err) {
-                            console.error('Gagal approve komentar:', err);
-                            if (isPermissionDenied(err)) showFirestorePermissionModal('comments');
-                        }
-                    }
-                    const deleteBtn = e.target.closest('.delete-comment-btn');
-                    if (deleteBtn) showDeleteConfirmation('comment', deleteBtn.dataset.id);
-                }
-                else if (appState.currentAdminPage === 'tools') {
-                    if (e.target.closest('#add-tool-btn')) showToolModal();
-                    const editBtn = e.target.closest('.edit-tool-btn');
-                    if (editBtn) showToolModal(editBtn.dataset.id);
-                    const deleteBtn = e.target.closest('.delete-tool-btn');
-                    if (deleteBtn) showDeleteConfirmation('tool', deleteBtn.dataset.id);
-                }
-            }
         });
-        
+
         mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
-        
-        const handleAdminLogin = async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('login-error');
-            try {
-                const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
-                console.log('Signed in:', userCred.user && userCred.user.email);
-                errorMsg.classList.add('hidden');
-                // auth.onAuthStateChanged will handle UI change and navigation
-            } catch (err) {
-                console.error('Auth signIn error:', err);
-                errorMsg.textContent = err.message || 'Gagal login.';
-                errorMsg.classList.remove('hidden');
-            }
-        };
-        
-        const handleAdminLogout = async () => {
-             try {
-                 await firebase.auth().signOut();
-             } catch (err) { console.error('Logout error:', err); }
-             appState.isLoggedIn = false;
-             updateUIAfterAuthChange(false);
-             navigateTo('home');
-        };
-        
-        const updateUIAfterAuthChange = (loggedIn, user = null) => {
-             appState.isLoggedIn = loggedIn;
-             const headerAuth = document.getElementById('header-auth-section');
-             const mobileAuth = document.getElementById('mobile-auth-section');
-             
-             if (loggedIn) {
-                 // Show Panel Admin only to admin users
-                 if (appState.isAdmin) {
-                     headerAuth.innerHTML = `<a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="admin-dashboard">Panel Admin</a><a href="#" id="admin-logout-button" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">Logout</a>`;
-                     mobileAuth.innerHTML = `<a href="#" class="nav-link block py-2 text-gray-600" data-page="admin-dashboard">Panel Admin</a><a href="#" id="admin-logout-button-mobile" class="block mt-2 bg-red-500 text-white text-center px-4 py-2 rounded-lg">Logout</a>`;
-                 } else {
-                     headerAuth.innerHTML = `<span class="text-gray-600">Anda masuk</span><a href="#" id="admin-logout-button" class="bg-red-500 text-white ml-3 px-4 py-2 rounded-lg hover:bg-red-600 transition">Logout</a>`;
-                     mobileAuth.innerHTML = `<a href="#" id="admin-logout-button-mobile" class="block mt-2 bg-red-500 text-white text-center px-4 py-2 rounded-lg">Logout</a>`;
-                 }
-             } else {
-                 headerAuth.innerHTML = `<a href="#" id="admin-login-button" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Admin Login</a>`;
-                 mobileAuth.innerHTML = `<a href="#" id="admin-login-button-mobile" class="block mt-2 bg-blue-500 text-white text-center px-4 py-2 rounded-lg">Admin Login</a>`;
-                 if (appState.currentPage.startsWith('admin')) navigateTo('home');
-             }
-        };
 
-        // =================================================================
-        // INISIALISASI APLIKASI
-        // =================================================================
-        const initApp = async () => {
-             updateUIAfterAuthChange(false); // Memastikan UI dalam keadaan logout saat awal
-             try { await navigateTo('home'); } catch (e) { console.error('navigateTo(home) failed on init:', e); }
-        };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            initApp();
-        }
+        const initApp = async () => { try { await navigateTo('home'); } catch (e) { console.error('init failed:', e); } };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp); else initApp();
     </script>
 </body>
 </html>
