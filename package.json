@@ -1,0 +1,15 @@
+{
+  "name": "web-software-quality-assurance",
+  "version": "1.0.0",
+  "main": "set-admin-claim.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "firebase-admin": "^13.5.0"
+  }
+}
