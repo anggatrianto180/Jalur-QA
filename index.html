@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- DOMPurify: sanitize HTML from editor before rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -306,10 +308,22 @@
             check();
         });
 
-        await waitForFirebase();
-        firebase.initializeApp(firebaseConfig);
-        const firestore = firebase.firestore();
-        console.log('Firebase compat initialized (public page), firestore ready:', !!firestore);
+        // Initialize Firebase after compat scripts load. Use promise-based init so the module
+        // doesn't block the page if scripts are slow or blocked by network.
+        let firestore = null;
+        waitForFirebase().then(() => {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                firestore = firebase.firestore();
+                window.publicFirestore = firestore; // expose for debug
+                console.log('Firebase compat initialized (public page), firestore ready:', !!firestore);
+            } catch (e) {
+                console.error('Firebase init failed:', e);
+            }
+            // start the app once scripts loaded (and DOM ready)
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp);
+            else initApp();
+        }).catch((e) => { console.error('waitForFirebase failed:', e); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp); else initApp(); });
 
         // lightweight cache for read-only data
         let dbCache = { categories: [], learningPaths: [], tools: [], comments: [] };
@@ -385,16 +399,37 @@
                 </div>`;
         };
 
-        const renderPathCard = (path) => `
+        const renderPathCard = (path) => {
+            // Use a special start-path action: we'll resolve the first available article at click-time
+            return `
             <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row items-center transform hover:shadow-2xl transition-shadow duration-300">
                  <img src="${path.image}" alt="${path.title}" class="w-full md:w-1/3 h-48 md:h-full object-cover">
                  <div class="p-6">
                     <h3 class="font-bold text-xl mb-2">${path.title}</h3>
                     <p class="text-gray-600 mb-4">${path.description}</p>
-                    <a href="#" class="nav-link bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm" data-page="path-detail" data-id="${path.id}">Mulai Belajar</a>
+                    <a href="#" class="nav-link bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm" data-page="start-path" data-id="${path.id}">Mulai Belajar</a>
                  </div>
             </div>
         `;
+        };
+
+        // Try to navigate to the first existing article in a learning path.
+        const startPath = async (pathId) => {
+            try {
+                const doc = await firestore.collection('learningPaths').doc(pathId).get();
+                if (!doc.exists) { navigateTo('paths'); return; }
+                const path = { id: doc.id, ...doc.data() };
+                const ids = Array.isArray(path.articles) ? path.articles : [];
+                for (let aid of ids) {
+                    try {
+                        const aDoc = await firestore.collection('articles').doc(aid).get();
+                        if (aDoc.exists) { navigateTo('article', aDoc.id); return; }
+                    } catch (e) { console.warn('Failed checking article', aid, e); }
+                }
+                // no available article found, fall back to path detail
+                navigateTo('path-detail', path.id);
+            } catch (err) { console.error('startPath failed', err); navigateTo('path-detail', pathId); }
+        };
 
         const renderHomePage = async () => {
             pageContent.innerHTML = document.getElementById('home-page-template').innerHTML;
@@ -430,12 +465,13 @@
             pageContent.innerHTML = document.getElementById('article-page-template').innerHTML; const wrapper = document.getElementById('article-content-wrapper');
             const date = (article.date && typeof article.date.toDate === 'function') ? article.date.toDate() : new Date(article.date);
             const categoryName = getCategoryName(article.categoryId);
+            const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(article.content || '') : (article.content || '');
             wrapper.innerHTML = `
                 <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
                 <h1 class="text-3xl md:text-4xl font-bold mt-2 mb-4">${article.title}</h1>
                 <div class="text-gray-500 text-sm mb-6"><span>Oleh ${article.author}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
                 ${article.image && String(article.image).trim() !== '' ? `<img src="${article.image}" alt="${article.title}" class="w-full rounded-lg mb-8">` : `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg"><h2 class="text-2xl font-bold">${article.title}</h2></div>`}
-                <div class="prose max-w-none">${article.content}</div>
+                <div class="prose max-w-none">${safeContent}</div>
             `;
             const tocList = document.getElementById('toc-list'); const headings = wrapper.querySelectorAll('h2'); tocList.innerHTML = '';
             if (headings.length > 0) { headings.forEach((h,i) => { h.id = `section-${i}`; tocList.innerHTML += `<li><a href="#${h.id}" class="hover:text-blue-600">${h.textContent}</a></li>`; }); tocList.parentElement.style.display = 'block'; }
@@ -463,19 +499,73 @@
         const renderToolsPage = () => {
             pageContent.innerHTML = document.getElementById('tools-page-template').innerHTML; const list = document.getElementById('tools-list'); list.innerHTML = dbCache.tools.map((tool,idx) => { const title = tool.title || tool.name || 'Untitled Tool'; const description = tool.description || ''; const firstVideo = (tool.videos && tool.videos[0]) || ''; const videoId = extractYouTubeId(firstVideo); const thumb = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : 'https://placehold.co/600x400/E2E8F0/333?text=No+Image'; return `<a href="#" class="nav-link block" data-page="tool" data-id="${tool.id}"><div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300"><div class="relative w-full h-40 bg-center bg-cover" style="background-image: url('${thumb}');"><div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"><h3 class="text-white font-bold text-lg px-4 text-center">${title}</h3></div></div><div class="p-6 text-center"><p class="text-gray-600 text-sm mb-2">${description}</p></div></div></a>`; }).join(''); };
 
-        const renderPage = async (page, id=null) => { switch(page){ case 'home': await renderHomePage(); break; case 'blog': await renderBlogPage(); break; case 'article': await renderArticlePage(id); break; case 'tool': await renderToolPage(id); break; case 'paths': renderPathsPage(); break; case 'about': renderAboutPage(); break; case 'tools': renderToolsPage(); break; default: await renderHomePage(); } lucide.createIcons(); };
+        // render detail page for a learning path
+        const renderPathDetailPage = async (id) => {
+            const doc = await firestore.collection('learningPaths').doc(id).get();
+            if (!doc.exists) { navigateTo('paths'); return; }
+            const path = { id: doc.id, ...doc.data() };
+            pageContent.innerHTML = document.getElementById('path-detail-page-template').innerHTML;
+            const wrapper = document.getElementById('path-detail-content');
+            const articlesContainer = document.createElement('div');
+            articlesContainer.className = 'space-y-4 mt-6';
+            // fetch article details listed in the path
+            const articleIds = Array.isArray(path.articles) ? path.articles : [];
+            let articleRows = [];
+            if (articleIds.length > 0) {
+                try {
+                    const docs = await Promise.all(articleIds.map(aid => firestore.collection('articles').doc(aid).get()));
+                    articleRows = docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
+                } catch (e) { console.error('Failed fetching path articles', e); }
+            }
+            const headerHtml = `
+                <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                    <div class="flex items-center gap-6">
+                        <img src="${path.image || 'https://placehold.co/240x160/E2E8F0/333?text=No+Image'}" class="w-48 h-36 object-cover rounded" />
+                        <div>
+                            <h1 class="text-3xl font-bold">${path.title}</h1>
+                            <p class="text-gray-600 mt-2">${path.description || ''}</p>
+                        </div>
+                    </div>
+                </div>`;
+            wrapper.innerHTML = headerHtml + `<div id="path-articles-list" class="mt-8 max-w-4xl mx-auto"></div>`;
+            const listEl = document.getElementById('path-articles-list');
+            if (articleRows.length === 0) {
+                listEl.innerHTML = `<div class="bg-white p-6 rounded-lg shadow text-center">Belum ada artikel yang ditambahkan ke jalur ini.</div>`;
+            } else {
+                listEl.innerHTML = articleRows.map(a => `
+                    <a href="#" class="nav-link block bg-white rounded-lg p-4 shadow hover:shadow-md mb-4" data-page="article" data-id="${a.id}">
+                        <h3 class="font-bold text-lg">${a.title}</h3>
+                        <p class="text-gray-600 text-sm mt-1">${a.excerpt || ''}</p>
+                    </a>
+                `).join('');
+            }
+        };
+
+        const renderPage = async (page, id=null) => { switch(page){ case 'home': await renderHomePage(); break; case 'blog': await renderBlogPage(); break; case 'article': await renderArticlePage(id); break; case 'tool': await renderToolPage(id); break; case 'paths': renderPathsPage(); break; case 'path-detail': await renderPathDetailPage(id); break; case 'about': renderAboutPage(); break; case 'tools': renderToolsPage(); break; default: await renderHomePage(); } lucide.createIcons(); };
 
         const navigateTo = async (page, id = null) => { appState.currentPage = page; window.scrollTo(0,0); if (!appState.dataLoaded) await loadInitialData(); mainHeader.classList.remove('hidden'); await renderPage(page,id); };
 
         document.body.addEventListener('click', async (e) => {
             const target = e.target.closest('.nav-link');
-            if (target) { e.preventDefault(); navigateTo(target.dataset.page, target.dataset.id); mobileMenu.classList.add('hidden'); return; }
+            if (target) {
+                e.preventDefault();
+                const page = target.dataset.page;
+                const id = target.dataset.id;
+                if (page === 'start-path') {
+                    // resolve the first existing article before navigating
+                    await startPath(id);
+                } else {
+                    navigateTo(page, id);
+                }
+                mobileMenu.classList.add('hidden');
+                return;
+            }
         });
 
         mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
 
-        const initApp = async () => { try { await navigateTo('home'); } catch (e) { console.error('init failed:', e); } };
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp); else initApp();
+    const initApp = async () => { try { await navigateTo('home'); } catch (e) { console.error('init failed:', e); } };
+    // initApp will be called after Firebase scripts load (see waitForFirebase().then(...) above)
     </script>
 </body>
 </html>

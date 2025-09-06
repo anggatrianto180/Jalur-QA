@@ -125,6 +125,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <!-- DOMPurify for sanitizing editor HTML (protect public render) -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+    <!-- Quill editor (for WYSIWYG) -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 
     <script type="module">
         // Config (same as index.html)
@@ -208,27 +213,128 @@
                         <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
                     </div>
                     <form id="article-form" class="p-6 space-y-4">
-                        <input type="hidden" name="id" value="${article.id || ''}">
-                        <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.title || ''}" required></div>
-                        <div><label class="block text-sm font-medium">Kategori</label><select name="categoryId" class="mt-1 w-full border-gray-300 rounded-md shadow-sm bg-white" required>${categoryOptions}</select></div>
-                        <div>
-                            <label class="block text-sm font-medium">URL Gambar (opsional)</label>
-                            <input type="text" name="image" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.image || ''}">
-                        </div>
-                        <div><label class="block text-sm font-medium">Kutipan</label><textarea name="excerpt" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.excerpt || ''}</textarea></div>
-                        <div><label class="block text-sm font-medium">Konten (HTML)</label><textarea name="content" rows="10" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.content ? article.content.trim() : ''}</textarea></div>
-                        <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
-                    </form>
+                                <input type="hidden" name="id" value="${article.id || ''}">
+                                <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.title || ''}" required></div>
+                                <div><label class="block text-sm font-medium">Kategori</label><select name="categoryId" class="mt-1 w-full border-gray-300 rounded-md shadow-sm bg-white" required>${categoryOptions}</select></div>
+                                <div>
+                                    <label class="block text-sm font-medium">URL Gambar (opsional)</label>
+                                    <input type="text" name="image" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.image || ''}">
+                                </div>
+                                <div><label class="block text-sm font-medium">Kutipan</label><textarea name="excerpt" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.excerpt || ''}</textarea></div>
+                                <div>
+                                    <label class="block text-sm font-medium">Konten</label>
+                                    <div class="mt-1 border rounded-md bg-white shadow-sm">
+                                        <div id="quill-toolbar">
+                                            <!-- Quill toolbar will be injected -->
+                                        </div>
+                                        <div id="quill-editor" class="bg-white" style="min-height:200px; max-height:50vh; overflow-y:auto">${article.content ? article.content.trim() : ''}</div>
+                                        <textarea name="content" id="hidden-article-content" class="hidden">${article.content ? article.content.trim() : ''}</textarea>
+                                        <div class="mt-2 flex gap-2"><button type="button" id="preview-article-btn" class="bg-gray-200 px-3 py-1 rounded">Preview</button></div>
+                                    </div>
+                                </div>
+                                <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
+                            </form>
                 </div>
             </div>`;
-            document.getElementById('article-form').addEventListener('submit', handleArticleFormSubmit);
+                // attach submit handler immediately so native form submission is prevented even if Quill fails to initialize
+                (function attachArticleFormHandler(){
+                    const _articleForm = document.getElementById('article-form');
+                    if (!_articleForm) return;
+                    if (_articleForm.dataset.handlerAttached) return;
+                    // set method to POST to avoid default GET query-string navigation
+                    try { _articleForm.method = 'post'; } catch(e){}
+                    _articleForm.onsubmit = async function(ev) {
+                        try {
+                            console.log('Article form onsubmit wrapper invoked');
+                            ev.preventDefault();
+                            const hiddenContent = document.getElementById('hidden-article-content');
+                            if (hiddenContent && window.adminQuill) hiddenContent.value = window.adminQuill.root.innerHTML;
+                            await handleArticleFormSubmit(ev);
+                        } catch (e) { console.error('Article form submit wrapper failed:', e); }
+                        return false;
+                    };
+                    _articleForm.dataset.handlerAttached = '1';
+                })();
+            // Initialize Quill
+            let quill;
+            try {
+                const quillToolbarOptions = [[{'header':[1,2,3,false]}], ['bold','italic','underline','strike'], [{'list':'ordered'},{'list':'bullet'}], ['link','image'], [{ 'font': [] }], [{ 'align': [] }], ['clean']];
+                const toolbarContainer = document.getElementById('quill-toolbar');
+                toolbarContainer.innerHTML = `<div id="quill-toolbar-inner"></div>`;
+                quill = new Quill('#quill-editor', { modules: { toolbar: quillToolbarOptions }, theme: 'snow' });
+                // load initial content if any
+                const hiddenContent = document.getElementById('hidden-article-content');
+                if (hiddenContent && hiddenContent.value) quill.root.innerHTML = hiddenContent.value;
+                // expose quill instance globally to ensure submit handler can read it
+                window.adminQuill = quill;
+                console.log('Quill initialized for article modal. adminQuill=', window.adminQuill, 'hiddenContent exists=', !!hiddenContent);
+                // (submit handling is attached outside so it works even if Quill init fails)
+                // preview
+                const previewBtn = document.getElementById('preview-article-btn');
+                if (previewBtn) previewBtn.addEventListener('click', () => {
+                    const raw = (window.adminQuill && window.adminQuill.root) ? window.adminQuill.root.innerHTML : quill.root.innerHTML;
+                    const sanitized = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(raw) : raw;
+                    // append overlay so form remains underneath
+                    const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'article-preview-overlay';
+                    overlay.innerHTML = `<div class="bg-white rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-y-auto"><h3 class="text-lg font-bold mb-4">Preview Artikel</h3><div class="prose max-w-none">${sanitized}</div><div class="mt-4 text-right"><button id="close-preview" class="bg-gray-200 px-3 py-1 rounded">Tutup</button></div></div>`;
+                    modalContainer.appendChild(overlay);
+                    const close = document.getElementById('close-preview'); if (close) close.addEventListener('click', (ev) => { ev.preventDefault(); const el = document.getElementById('article-preview-overlay'); if (el) el.remove(); });
+                });
+            } catch (e) { console.warn('Quill init failed, falling back to contentEditable', e); }
+            document.getElementById('close-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
+            document.getElementById('cancel-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
             document.getElementById('close-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
             document.getElementById('cancel-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
         };
 
         const handleArticleFormSubmit = async (e) => {
-            e.preventDefault(); const form = new FormData(e.target); const articleId = form.get('id'); const articleData = { title: form.get('title'), categoryId: form.get('categoryId'), image: form.get('image'), excerpt: form.get('excerpt'), content: form.get('content'), author: 'Admin', authorId: (auth && auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : null, slug: form.get('title').toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''), };
-            try { if (!articleId) { articleData.date = firebase.firestore.Timestamp.now(); await firestore.collection('articles').add(articleData); } else { await firestore.collection('articles').doc(articleId).update(articleData); } modalContainer.innerHTML = ''; await renderAdminPanel('articles'); } catch (err) { console.error('Gagal menyimpan artikel:', err); if (isPermissionDenied(err)) showFirestorePermissionModal('articles'); else { modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`; document.getElementById('close-save-error').addEventListener('click', () => modalContainer.innerHTML = ''); } }
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const articleId = form.get('id');
+            const submitBtn = (e.target.querySelector && e.target.querySelector('button[type="submit"]')) || null;
+            try {
+                console.log('Article submit started. articleId=', articleId);
+                console.log('Current auth user:', auth && auth.currentUser ? { uid: auth.currentUser.uid, email: auth.currentUser.email } : null);
+                // prefer Quill's live content if available
+                let rawContent = '';
+                if (window.adminQuill && window.adminQuill.root) rawContent = window.adminQuill.root.innerHTML;
+                else rawContent = form.get('content') || '';
+                const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(rawContent) : rawContent;
+                const articleData = {
+                    title: form.get('title'),
+                    categoryId: form.get('categoryId'),
+                    image: form.get('image'),
+                    excerpt: form.get('excerpt'),
+                    content: safeContent,
+                    author: 'Admin',
+                    authorId: (auth && auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : null,
+                    slug: (form.get('title') || '').toString().toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
+                };
+                console.log('Article data prepared:', articleData);
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...'; }
+                let writeResult = null;
+                if (!articleId) {
+                    articleData.date = firebase.firestore.Timestamp.now();
+                    writeResult = await firestore.collection('articles').add(articleData);
+                    console.log('Article added, ref id=', writeResult && writeResult.id);
+                } else {
+                    await firestore.collection('articles').doc(articleId).update(articleData);
+                    writeResult = { id: articleId };
+                    console.log('Article updated, id=', articleId);
+                }
+                showToast('Artikel berhasil disimpan', 'info');
+                modalContainer.innerHTML = '';
+                await renderAdminPanel('articles');
+            } catch (err) {
+                console.error('Gagal menyimpan artikel:', err);
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Simpan'; }
+                if (isPermissionDenied(err)) showFirestorePermissionModal('articles');
+                else {
+                    // show detailed modal with error info
+                    modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
+                    document.getElementById('close-save-error').addEventListener('click', () => modalContainer.innerHTML = '');
+                }
+            }
         };
 
         const showCategoryModal = (categoryId = null) => {
@@ -311,7 +417,15 @@
         };
 
         const showPathModal = async (pathId = null) => {
-            const isEditing = pathId !== null; let path = {}; if (isEditing) { const doc = await firestore.collection('learningPaths').doc(pathId).get(); if (doc.exists) path = { id: doc.id, ...doc.data() }; }
+            const isEditing = pathId !== null;
+            let path = {};
+            if (isEditing) {
+                const doc = await firestore.collection('learningPaths').doc(pathId).get();
+                if (doc.exists) path = { id: doc.id, ...doc.data() };
+            }
+            // fetch available articles to populate selects
+            let allArticles = [];
+            try { allArticles = await fetchCollection('articles'); } catch (e) { console.error('Failed to load articles for path modal', e); }
             const modalTitle = isEditing ? 'Edit Jalur Belajar' : 'Tambah Jalur Belajar';
             modalContainer.innerHTML = `
             <div class="modal-overlay">
@@ -322,17 +436,72 @@
                         <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${path.title || ''}" required></div>
                         <div><label class="block text-sm font-medium">Deskripsi Singkat</label><textarea name="description" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${path.description || ''}</textarea></div>
                         <div><label class="block text-sm font-medium">URL Gambar</label><input type="text" name="image" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${path.image || ''}"></div>
-                        <div><label class="block text-sm font-medium">Artikel (IDs, comma separated)</label><input type="text" name="articles" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${(path.articles || []).join(',')}"></div>
+                        <div>
+                            <label class="block text-sm font-medium">Artikel</label>
+                            <div id="article-rows" class="space-y-2 mt-2"></div>
+                            <div class="mt-2"><button type="button" id="add-article-row" class="bg-green-500 text-white px-3 py-1 rounded">Tambah Artikel</button></div>
+                            <p class="text-xs text-gray-500 mt-2">Pilih artikel yang termasuk dalam jalur ini. Urutan akan disimpan sesuai baris.</p>
+                        </div>
                         <div class="pt-4 flex justify-end gap-3"><button type="button" id="cancel-modal-btn" class="bg-gray-200 py-2 px-4 rounded-lg">Batal</button><button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg">Simpan</button></div>
                     </form>
                 </div>
             </div>`;
+
+            const rowsContainer = document.getElementById('article-rows');
+            const buildOptions = (selectedId = '') => {
+                const opts = allArticles.map(a => `<option value="${a.id}" ${a.id===selectedId ? 'selected' : ''}>${(a.title||a.id).replace(/"/g,'')}</option>`).join('');
+                return `<option value="">-- Pilih Artikel --</option>${opts}`;
+            };
+
+            const addRow = (selectedId = '') => {
+                const wrapper = document.createElement('div'); wrapper.className = 'flex items-center gap-2';
+                const selectId = 'path-article-' + (Date.now() + Math.floor(Math.random()*1000));
+                wrapper.innerHTML = `
+                    <select id="${selectId}" name="article-id" class="flex-1 border rounded px-3 py-2 bg-white">${buildOptions(selectedId)}</select>
+                    <button type="button" class="remove-article-row bg-red-500 text-white px-2 py-1 rounded">Hapus</button>
+                `;
+                rowsContainer.appendChild(wrapper);
+                wrapper.querySelector('.remove-article-row').addEventListener('click', () => wrapper.remove());
+            };
+
+            // initialize rows from existing path data or provide one empty row
+            const initialArticles = Array.isArray(path.articles) ? path.articles : [];
+            if (initialArticles.length > 0) initialArticles.forEach(aid => addRow(aid)); else addRow('');
+
+            document.getElementById('add-article-row').addEventListener('click', () => addRow(''));
             document.getElementById('path-form').addEventListener('submit', handlePathFormSubmit);
             document.getElementById('close-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
             document.getElementById('cancel-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
         };
 
-        const handlePathFormSubmit = async (e) => { e.preventDefault(); const form = new FormData(e.target); const id = form.get('id'); const data = { title: form.get('title'), description: form.get('description'), image: form.get('image') || 'https://placehold.co/600x400', articles: form.get('articles') ? form.get('articles').split(',').map(s => s.trim()).filter(Boolean) : [] }; try { if (!id) await firestore.collection('learningPaths').add(data); else await firestore.collection('learningPaths').doc(id).update(data); dbCache.learningPaths = await fetchCollection('learningPaths'); modalContainer.innerHTML = ''; await renderAdminPanel('paths'); } catch (err) { console.error('Gagal menyimpan jalur belajar:', err); if (isPermissionDenied(err)) showFirestorePermissionModal('learningPaths'); else { modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`; document.getElementById('close-save-error').addEventListener('click', () => modalContainer.innerHTML = ''); } } };
+        const handlePathFormSubmit = async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const id = form.get('id');
+            // collect article ids from selects named 'article-id'
+            const selects = Array.from(e.target.querySelectorAll('select[name="article-id"]'));
+            const articles = selects.map(s => s.value).filter(Boolean);
+            const data = {
+                title: form.get('title'),
+                description: form.get('description'),
+                image: form.get('image') || 'https://placehold.co/600x400',
+                articles
+            };
+            try {
+                if (!id) await firestore.collection('learningPaths').add(data);
+                else await firestore.collection('learningPaths').doc(id).update(data);
+                dbCache.learningPaths = await fetchCollection('learningPaths');
+                modalContainer.innerHTML = '';
+                await renderAdminPanel('paths');
+            } catch (err) {
+                console.error('Gagal menyimpan jalur belajar:', err);
+                if (isPermissionDenied(err)) showFirestorePermissionModal('learningPaths');
+                else {
+                    modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Gagal Menyimpan</h3><pre style="white-space:pre-wrap;">${err && err.message ? err.message : JSON.stringify(err)}</pre><div class="mt-4"><button id="close-save-error" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`;
+                    document.getElementById('close-save-error').addEventListener('click', () => modalContainer.innerHTML = '');
+                }
+            }
+        };
 
         const showCommentModal = (commentId = null) => {
             const comment = commentId ? dbCache.comments.find(c => c.id === commentId) : {};
