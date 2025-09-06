@@ -154,6 +154,10 @@
 
         const pageContent = document.getElementById('page-content');
         const modalContainer = document.getElementById('modal-container');
+    const headerEl = document.querySelector('header');
+
+    const hideHeader = () => { try { if (headerEl) headerEl.style.display = 'none'; } catch (e) { } };
+    const showHeader = () => { try { if (headerEl) headerEl.style.display = 'block'; } catch (e) { } };
 
         // Helpers
         const fetchCollection = async (name) => {
@@ -382,6 +386,8 @@
         // Render admin panel pages
         const renderAdminPanel = async (adminPage = 'dashboard') => {
             if (!appState.isLoggedIn || !appState.isAdmin) { modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md text-center"><h3 class="text-lg font-bold mb-2">Akses Ditolak</h3><p>Halaman admin hanya dapat diakses oleh akun admin.</p><div class="mt-4"><button id="close-access-denied" class="bg-gray-200 py-2 px-4 rounded">Tutup</button></div></div></div>`; document.getElementById('close-access-denied').addEventListener('click', () => { modalContainer.innerHTML = ''; window.location.href = 'index.html'; }); return; }
+            // show header for admin pages
+            showHeader();
             appState.currentAdminPage = adminPage; pageContent.innerHTML = document.getElementById('admin-panel-page-template').innerHTML; const adminContent = document.getElementById('admin-content');
             document.querySelectorAll('.admin-sidebar-link').forEach(link => { link.classList.toggle('active', link.dataset.adminPage === adminPage); });
             if (!appState.isAdmin) { document.querySelectorAll('.admin-sidebar-link').forEach(link => { if (['categories','paths','comments'].includes(link.dataset.adminPage)) link.style.display = 'none'; }); }
@@ -436,7 +442,9 @@
                     }
                 } catch(e) { console.error('Failed to set header user info', e); }
                 await renderAdminPanel('dashboard');
-            } else { appState.isLoggedIn = false; pageContent.innerHTML = document.getElementById('admin-login-page-template').innerHTML; document.getElementById('admin-login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('username').value; const password = document.getElementById('password').value; const errorMsg = document.getElementById('login-error'); try { await firebase.auth().signInWithEmailAndPassword(email, password); errorMsg.classList.add('hidden'); } catch (err) { console.error('Auth signIn error:', err); errorMsg.textContent = err.message || 'Gagal login.'; errorMsg.classList.remove('hidden'); } }); }
+            } else { appState.isLoggedIn = false; // hide header on login form
+                hideHeader();
+                pageContent.innerHTML = document.getElementById('admin-login-page-template').innerHTML; document.getElementById('admin-login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('username').value; const password = document.getElementById('password').value; const errorMsg = document.getElementById('login-error'); try { await firebase.auth().signInWithEmailAndPassword(email, password); errorMsg.classList.add('hidden'); } catch (err) { console.error('Auth signIn error:', err); errorMsg.textContent = err.message || 'Gagal login.'; errorMsg.classList.remove('hidden'); } }); }
         });
 
         // Attach handlers for header buttons (logout and back)
