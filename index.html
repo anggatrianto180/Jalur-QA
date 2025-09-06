@@ -369,6 +369,24 @@
 
         const getCategoryName = (id) => dbCache.categories.find(c => c.id === id)?.name || 'Tanpa Kategori';
 
+        // Helpers to detect placeholder image services and generate a random pastel color
+        const isPlaceholderUrl = (url) => {
+            if (!url) return false;
+            const u = String(url).toLowerCase();
+            return u.includes('placehold.co') || u.includes('placehold.it') || u.includes('via.placeholder.com');
+        };
+        const getRandomColor = (seed) => {
+            // produce a consistent pastel color from an optional seed string
+            let h = 0;
+            if (seed) {
+                for (let i = 0; i < seed.length; i++) h = (h << 5) - h + seed.charCodeAt(i);
+                h = Math.abs(h) % 360;
+            } else {
+                h = Math.floor(Math.random() * 360);
+            }
+            return `hsl(${h}deg 70% 85%)`;
+        };
+
         const renderArticleCard = (article) => {
             const hasImage = article.image && String(article.image).trim() !== '';
             const categoryName = getCategoryName(article.categoryId);
@@ -401,16 +419,49 @@
 
         const renderPathCard = (path) => {
             // Use a special start-path action: we'll resolve the first available article at click-time
+            const hasImage = path.image && String(path.image).trim() !== '';
+            const imageIsPlaceholder = hasImage && isPlaceholderUrl(path.image);
+            if (hasImage && !imageIsPlaceholder) {
+                return `
+                <a href="#" class="nav-link block" data-page="start-path" data-id="${path.id}">
+                  <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
+                      <div class="relative w-full h-48 md:h-56 lg:h-48">
+                          <img src="${path.image}" alt="${path.title}" class="w-full h-full object-cover" />
+                          <div class="absolute inset-0 bg-gray-700 bg-opacity-60 flex items-center justify-center" role="img" aria-label="${path.title}">
+                              <h3 class="text-white font-bold text-xl md:text-2xl px-4 text-center" tabindex="0">${path.title}</h3>
+                          </div>
+                      </div>
+                      <div class="p-6">
+                          <p class="text-gray-600 mb-4">${path.description}</p>
+                          <div class="text-right"><span class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg">Mulai Belajar</span></div>
+                      </div>
+                  </div>
+                </a>`;
+            }
+            // either no image or placeholder URL -> render a solid random pastel background
+            // use a consistent dark-gray background so title is readable and uniform
             return `
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row items-center transform hover:shadow-2xl transition-shadow duration-300">
-                 <img src="${path.image}" alt="${path.title}" class="w-full md:w-1/3 h-48 md:h-full object-cover">
-                 <div class="p-6">
-                    <h3 class="font-bold text-xl mb-2">${path.title}</h3>
-                    <p class="text-gray-600 mb-4">${path.description}</p>
-                    <a href="#" class="nav-link bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm" data-page="start-path" data-id="${path.id}">Mulai Belajar</a>
-                 </div>
-            </div>
-        `;
+            <a href="#" class="nav-link block" data-page="start-path" data-id="${path.id}">
+              <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:shadow-2xl transition-shadow duration-300">
+                  <div class="w-full h-48 md:h-56 lg:h-48 flex items-center justify-center bg-gray-700">
+                      <h3 class="text-white font-bold text-xl md:text-2xl px-4 text-center">${path.title}</h3>
+                  </div>
+                  <div class="p-6">
+                      <p class="text-gray-600 mb-4">${path.description}</p>
+                      <div class="text-right"><span class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg">Mulai Belajar</span></div>
+                  </div>
+              </div>
+            </a>`;
+                        return `
+                        <a href="#" class="nav-link block" data-page="start-path" data-id="${path.id}">
+                            <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:shadow-2xl transition-shadow duration-300">
+                                    <div class="p-6">
+                                            <h3 class="font-bold text-xl mb-2">${path.title}</h3>
+                                            <p class="text-gray-600 mb-4">${path.description}</p>
+                                            <div class="text-right"><span class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg">Mulai Belajar</span></div>
+                                    </div>
+                            </div>
+                        </a>`;
         };
 
         // Try to navigate to the first existing article in a learning path.
