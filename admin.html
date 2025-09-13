@@ -258,10 +258,10 @@
             // Initialize Quill
             let quill;
             try {
-                const quillToolbarOptions = [[{'header':[1,2,3,false]}], ['bold','italic','underline','strike'], [{'list':'ordered'},{'list':'bullet'}], ['link','image'], [{ 'font': [] }], [{ 'align': [] }], ['clean']];
+                const quillToolbarOptions = [[{'header':[1,2,3,false]}], ['bold','italic','underline','strike'], [{'list':'ordered'},{'list':'bullet'},{'indent':'-1'},{'indent':'+1'}], ['blockquote','code-block'], ['link','image'], [{ 'font': [] }], [{ 'align': [] }], ['clean']];
                 const toolbarContainer = document.getElementById('quill-toolbar');
                 toolbarContainer.innerHTML = `<div id="quill-toolbar-inner"></div>`;
-                quill = new Quill('#quill-editor', { modules: { toolbar: quillToolbarOptions }, theme: 'snow' });
+                quill = new Quill('#quill-editor', { modules: { toolbar: quillToolbarOptions }, theme: 'snow', formats: ['header','bold','italic','underline','strike','list','bullet','indent','blockquote','code-block','link','image','font','align'] });
                 // load initial content if any
                 const hiddenContent = document.getElementById('hidden-article-content');
                 if (hiddenContent && hiddenContent.value) quill.root.innerHTML = hiddenContent.value;
@@ -273,7 +273,10 @@
                 const previewBtn = document.getElementById('preview-article-btn');
                 if (previewBtn) previewBtn.addEventListener('click', () => {
                     const raw = (window.adminQuill && window.adminQuill.root) ? window.adminQuill.root.innerHTML : quill.root.innerHTML;
-                    const sanitized = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(raw) : raw;
+                    const sanitized = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(raw, {
+                        ADD_ATTR: ['class','style'],
+                        ALLOWED_CSS_PROPERTIES: ['font-size','color','background-color','text-align','font-weight','font-style','font-family','margin-left','margin-right','margin-top','margin-bottom','padding-left']
+                    }) : raw;
                     // append overlay so form remains underneath
                     const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'article-preview-overlay';
                     overlay.innerHTML = `<div class="bg-white rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-y-auto"><h3 class="text-lg font-bold mb-4">Preview Artikel</h3><div class="prose max-w-none">${sanitized}</div><div class="mt-4 text-right"><button id="close-preview" class="bg-gray-200 px-3 py-1 rounded">Tutup</button></div></div>`;
@@ -299,7 +302,10 @@
                 let rawContent = '';
                 if (window.adminQuill && window.adminQuill.root) rawContent = window.adminQuill.root.innerHTML;
                 else rawContent = form.get('content') || '';
-                const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(rawContent) : rawContent;
+                const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(rawContent, {
+                    ADD_ATTR: ['class','style'],
+                    ALLOWED_CSS_PROPERTIES: ['font-size','color','background-color','text-align','font-weight','font-style','font-family','margin-left','margin-right','margin-top','margin-bottom','padding-left']
+                }) : rawContent;
                 const articleData = {
                     title: form.get('title'),
                     categoryId: form.get('categoryId'),

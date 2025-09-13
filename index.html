@@ -71,6 +71,37 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        /* Article content styles to preserve whitespace and list markers */
+        .article-body {
+            white-space: pre-wrap; /* preserve newlines and wrap long lines */
+            word-break: break-word;
+            line-height: 1.7;
+        }
+        .article-body ol, .article-body ul {
+            margin-left: 1.25rem;
+            padding-left: 1rem;
+        }
+        /* Force list markers to be visible and properly indented */
+        .article-body ol {
+            list-style-type: decimal;
+            list-style-position: outside;
+            padding-left: 1.5rem;
+        }
+        .article-body li {
+            display: list-item;
+            list-style-type: inherit;
+            list-style-position: outside;
+        }
+        .article-body ol ol { padding-left: 1.25rem; }
+        /* Support Quill's indent classes so nested lists and indents render similarly to editor */
+        .article-body .ql-indent-1 { margin-left: 1.25rem; }
+        .article-body .ql-indent-2 { margin-left: 2.5rem; }
+        .article-body .ql-indent-3 { margin-left: 3.5rem; }
+        .article-body ol { list-style-position: outside; }
+        .article-body li {
+            margin-bottom: 0.5rem;
+        }
+        .article-body pre { white-space: pre-wrap; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -516,13 +547,17 @@
             pageContent.innerHTML = document.getElementById('article-page-template').innerHTML; const wrapper = document.getElementById('article-content-wrapper');
             const date = (article.date && typeof article.date.toDate === 'function') ? article.date.toDate() : new Date(article.date);
             const categoryName = getCategoryName(article.categoryId);
-            const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(article.content || '') : (article.content || '');
+            const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(article.content || '', {
+                ADD_ATTR: ['class','style'],
+                ALLOWED_CSS_PROPERTIES: ['font-size','color','background-color','text-align','font-weight','font-style','font-family','margin-left','margin-right','margin-top','margin-bottom','padding-left']
+            }) : (article.content || '');
+            try { console.log('renderArticlePage: sanitized content snippet ->', (safeContent || '').slice(0,400)); } catch(e) {}
             wrapper.innerHTML = `
                 <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
                 <h1 class="text-3xl md:text-4xl font-bold mt-2 mb-4">${article.title}</h1>
                 <div class="text-gray-500 text-sm mb-6"><span>Oleh ${article.author}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
                 ${article.image && String(article.image).trim() !== '' ? `<img src="${article.image}" alt="${article.title}" class="w-full rounded-lg mb-8">` : `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg"><h2 class="text-2xl font-bold">${article.title}</h2></div>`}
-                <div class="prose max-w-none">${safeContent}</div>
+                <div class="article-body max-w-none">${safeContent}</div>
             `;
             const tocList = document.getElementById('toc-list'); const headings = wrapper.querySelectorAll('h2'); tocList.innerHTML = '';
             if (headings.length > 0) { headings.forEach((h,i) => { h.id = `section-${i}`; tocList.innerHTML += `<li><a href="#${h.id}" class="hover:text-blue-600">${h.textContent}</a></li>`; }); tocList.parentElement.style.display = 'block'; }
