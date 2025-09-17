@@ -148,14 +148,15 @@
             check();
         });
         await waitForFirebase();
-        firebase.initializeApp(firebaseConfig);
-        const firestore = firebase.firestore();
-        const auth = firebase.auth();
-        console.log('Admin: firebase initialized');
+        // initialize firebase via shared helper if present
+        try { if (window.sharedHelpers && typeof window.sharedHelpers.initFirebase === 'function') { window.sharedHelpers.initFirebase(firebaseConfig); window.sharedHelpers.firestore = window.sharedHelpers.firestore || window.firebase.firestore(); window.sharedHelpers.auth = window.sharedHelpers.auth || window.firebase.auth(); } else { firebase.initializeApp(firebaseConfig); window.sharedHelpers = window.sharedHelpers || {}; window.sharedHelpers.firestore = window.firebase.firestore(); window.sharedHelpers.auth = window.firebase.auth(); } } catch(e) { console.warn('Firebase init fallback', e); }
+        const firestore = window.sharedHelpers.firestore;
+        const auth = window.sharedHelpers.auth;
+        console.log('Admin: firebase initialized (shared)');
 
         // Basic app state and cache
         const dbCache = { categories: [], learningPaths: [], tools: [], comments: [] };
-        const appState = { isAdmin: false, isLoggedIn: false, currentAdminPage: 'dashboard' };
+    const appState = { isAdmin: false, isLoggedIn: false, currentAdminPage: 'dashboard', adminArticlesSort: 'newest' };
 
         const pageContent = document.getElementById('page-content');
         const modalContainer = document.getElementById('modal-container');
@@ -165,9 +166,24 @@
     const showHeader = () => { try { if (headerEl) headerEl.style.display = 'block'; } catch (e) { } };
 
         // Helpers
-        const fetchCollection = async (name) => {
-            const snap = await firestore.collection(name).get();
-            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const fetchCollection = async (name, options = {}) => {
+            if (window.sharedHelpers && typeof window.sharedHelpers.fetchCollection === 'function') {
+                return window.sharedHelpers.fetchCollection(name, options);
+            }
+            // fallback local implementation
+            try {
+                let q = firestore.collection(name);
+                if (options.orderBy) {
+                    const dir = options.direction || 'desc';
+                    q = q.orderBy(options.orderBy, dir);
+                }
+                const snap = await q.get();
+                return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch (e) {
+                console.warn('fetchCollection fallback get for', name, e);
+                const snap = await firestore.collection(name).get();
+                return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            }
         };
 
         const isPermissionDenied = (err) => {
@@ -198,6 +214,42 @@
         const isYouTubeUrl = (url) => !!extractYouTubeId(url);
 
         const getCategoryName = (id) => dbCache.categories.find(c => c.id === id)?.name || 'Tanpa Kategori';
+
+        // Visitor stats helpers (admin dashboard)
+        const fetchVisitorStats = async () => {
+            try {
+                const snap = await firestore.collection('visitors').get();
+                const countries = snap.docs.map(d => ({ country: d.id, ...(d.data() || {}) }));
+                const total = countries.reduce((s, c) => s + (c.count || 0), 0);
+                countries.sort((a, b) => (b.count || 0) - (a.count || 0));
+                return { total, countries };
+            } catch (e) {
+                console.error('Failed to fetch visitor stats:', e);
+                return { total: 0, countries: [] };
+            }
+        };
+
+        const renderDashboardVisitors = async (containerEl) => {
+            try {
+                const stats = await fetchVisitorStats();
+                const top = stats.countries.slice(0, 10);
+                const listHtml = top.length ? top.map(c => `<li class="flex justify-between items-center py-1 border-b"><span>${c.country}</span><span class="font-semibold">${c.count || 0}</span></li>`).join('') : '<li class="text-gray-500">Belum ada data kunjungan</li>';
+                const html = `
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-gray-500">Kunjungan</h3>
+                        <p class="text-3xl font-bold">${stats.total}</p>
+                        <div class="mt-4">
+                            <h4 class="text-sm font-medium text-gray-600 mb-2">Negara Teratas</h4>
+                            <ul class="text-sm">${listHtml}</ul>
+                        </div>
+                    </div>
+                `;
+                if (!containerEl) return;
+                const target = typeof containerEl === 'string' ? document.getElementById(containerEl) : containerEl;
+                if (!target) return;
+                target.innerHTML = html;
+            } catch (e) { console.error('renderDashboardVisitors error:', e); }
+        };
 
         // --- ADMIN MODALS & HANDLERS (copied/adapted) ---
         const showArticleModal = async (articleId = null) => {
@@ -566,8 +618,27 @@
             appState.currentAdminPage = adminPage; pageContent.innerHTML = document.getElementById('admin-panel-page-template').innerHTML; const adminContent = document.getElementById('admin-content');
             document.querySelectorAll('.admin-sidebar-link').forEach(link => { link.classList.toggle('active', link.dataset.adminPage === adminPage); });
             if (!appState.isAdmin) { document.querySelectorAll('.admin-sidebar-link').forEach(link => { if (['categories','paths','comments'].includes(link.dataset.adminPage)) link.style.display = 'none'; }); }
-            if (adminPage === 'dashboard') { const articles = await fetchCollection('articles'); adminContent.innerHTML = `<h1 class="text-3xl font-bold mb-6">Dashboard</h1><div class="grid md:grid-cols-3 gap-6"><div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-500">Total Artikel</h3><p class="text-4xl font-bold">${articles.length}</p></div><div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-500">Total Kategori</h3><p class="text-4xl font-bold">${dbCache.categories.length}</p></div></div>`; }
-            else if (adminPage === 'articles') { const articles = await fetchCollection('articles'); adminContent.innerHTML = `<div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Artikel</h1><button id="add-article-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Artikel</span></button></div><div class="bg-white p-6 rounded-lg shadow overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b"><th class="p-4">Judul</th><th class="p-4">Kategori</th><th class="p-4">Tanggal</th><th class="p-4">Aksi</th></tr></thead><tbody>${articles.map(a => { const date = (a.date && typeof a.date.toDate === 'function') ? a.date.toDate() : new Date(a.date); return `<tr class="border-b hover:bg-gray-50"><td class="p-4">${a.title}</td><td class="p-4">${getCategoryName(a.categoryId)}</td><td class="p-4">${date.toLocaleDateString('id-ID')}</td><td class="p-4 flex gap-2"><button class="edit-article-btn text-blue-500" data-id="${a.id}"><i data-lucide="edit"></i></button><button class="delete-article-btn text-red-500" data-id="${a.id}"><i data-lucide="trash-2"></i></button></td></tr>` }).join('')}</tbody></table></div>`; const addArticleBtn = document.getElementById('add-article-btn'); if (addArticleBtn) addArticleBtn.addEventListener('click', () => showArticleModal()); }
+            if (adminPage === 'dashboard') {
+                const articles = await fetchCollection('articles');
+                adminContent.innerHTML = `<h1 class="text-3xl font-bold mb-6">Dashboard</h1><div class="grid md:grid-cols-3 gap-6"><div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-500">Total Artikel</h3><p class="text-4xl font-bold">${articles.length}</p></div><div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-500">Total Kategori</h3><p class="text-4xl font-bold">${dbCache.categories.length}</p></div><div id="visitor-stats-container" class="col-span-1"></div></div>`;
+                // populate visitor stats widget
+                renderDashboardVisitors(document.getElementById('visitor-stats-container'));
+            }
+            else if (adminPage === 'articles') {
+                const sortDir = appState.adminArticlesSort === 'oldest' ? 'asc' : 'desc';
+                const articles = await fetchCollection('articles', { orderBy: 'date', direction: sortDir });
+                adminContent.innerHTML = `<div class="flex justify-between items-center mb-6"><div class="flex items-center gap-4"><h1 class="text-3xl font-bold">Manajemen Artikel</h1><label class="text-sm text-gray-600">Urutkan:</label><select id="articles-sort-select" class="border rounded px-2 py-1 bg-white"><option value="newest">Terbaru</option><option value="oldest">Terlama</option></select></div><button id="add-article-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Artikel</span></button></div><div class="bg-white p-6 rounded-lg shadow overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b"><th class="p-4">Judul</th><th class="p-4">Kategori</th><th class="p-4">Tanggal</th><th class="p-4">Aksi</th></tr></thead><tbody>${articles.map(a => { const date = (a.date && typeof a.date.toDate === 'function') ? a.date.toDate() : new Date(a.date); return `<tr class="border-b hover:bg-gray-50"><td class="p-4">${a.title}</td><td class="p-4">${getCategoryName(a.categoryId)}</td><td class="p-4">${date.toLocaleDateString('id-ID')}</td><td class="p-4 flex gap-2"><button class="edit-article-btn text-blue-500" data-id="${a.id}"><i data-lucide="edit"></i></button><button class="delete-article-btn text-red-500" data-id="${a.id}"><i data-lucide="trash-2"></i></button></td></tr>` }).join('')}</tbody></table></div>`;
+                const addArticleBtn = document.getElementById('add-article-btn'); if (addArticleBtn) addArticleBtn.addEventListener('click', () => showArticleModal());
+                // set and wire sort select
+                const sortSelect = document.getElementById('articles-sort-select');
+                if (sortSelect) {
+                    sortSelect.value = appState.adminArticlesSort || 'newest';
+                    sortSelect.addEventListener('change', async (e) => {
+                        appState.adminArticlesSort = e.target.value;
+                        await renderAdminPanel('articles');
+                    });
+                }
+            }
             else if (adminPage === 'categories') { adminContent.innerHTML = `<div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Kategori</h1><button id="add-category-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Kategori</span></button></div><div class="bg-white p-6 rounded-lg shadow overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b"><th class="p-4">ID</th><th class="p-4">Nama Kategori</th><th class="p-4">Aksi</th></tr></thead><tbody>${dbCache.categories.map(c => `<tr class="border-b hover:bg-gray-50"><td class="p-4">${c.id}</td><td class="p-4">${c.name}</td><td class="p-4 flex gap-2"><button class="edit-category-btn text-blue-500" data-id="${c.id}"><i data-lucide="edit"></i></button><button class="delete-category-btn text-red-500" data-id="${c.id}"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody></table></div>`; const addCatBtn = document.getElementById('add-category-btn'); if (addCatBtn) addCatBtn.addEventListener('click', () => showCategoryModal()); }
             else if (adminPage === 'paths') { const paths = await fetchCollection('learningPaths'); adminContent.innerHTML = `<div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold">Manajemen Jalur Belajar</h1><button id="add-path-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i><span>Tambah Jalur</span></button></div><div class="bg-white p-6 rounded-lg shadow overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b"><th class="p-4">Judul</th><th class="p-4">Deskripsi</th><th class="p-4">Jumlah Artikel</th><th class="p-4">Aksi</th></tr></thead><tbody>${paths.map(p => `<tr class="border-b hover:bg-gray-50"><td class="p-4">${p.title}</td><td class="p-4">${p.description}</td><td class="p-4">${(p.articles||[]).length}</td><td class="p-4 flex gap-2"><button class="edit-path-btn text-blue-500" data-id="${p.id}"><i data-lucide="edit"></i></button><button class="delete-path-btn text-red-500" data-id="${p.id}"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody></table></div>`; const addPathBtn = document.getElementById('add-path-btn'); if (addPathBtn) addPathBtn.addEventListener('click', () => showPathModal()); }
             else if (adminPage === 'comments') { const comments = await fetchCollection('comments'); adminContent.innerHTML = `<h1 class="text-3xl font-bold mb-6">Manajemen Komentar</h1><div class="bg-white p-6 rounded-lg shadow overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b"><th class="p-4">Nama</th><th class="p-4">Komentar</th><th class="p-4">Status</th><th class="p-4">Aksi</th></tr></thead><tbody>${comments.map(c => `<tr class="border-b hover:bg-gray-50"><td class="p-4">${c.name}</td><td class="p-4">${c.text}</td><td class="p-4">${c.approved ? '<span class="text-green-600 font-semibold">Approved</span>' : '<span class="text-yellow-600 font-semibold">Pending</span>'}</td><td class="p-4 flex gap-2"><button class="reply-comment-btn text-blue-500" data-id="${c.id}"><i data-lucide="message-square"></i></button><button class="approve-comment-btn text-green-500" data-id="${c.id}"><i data-lucide="check-circle"></i></button><button class="delete-comment-btn text-red-500" data-id="${c.id}"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody></table></div>`; }

@@ -322,6 +322,8 @@
             const s1 = document.createElement('script'); s1.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js'; head.appendChild(s1);
             const s2 = document.createElement('script'); s2.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js'; head.appendChild(s2);
             // auth compat not needed on public page; admin.html handles authentication
+            // include shared helpers
+            const s3 = document.createElement('script'); s3.src = './shared.js'; head.appendChild(s3);
         };
         addFirebaseScripts();
 
@@ -344,9 +346,15 @@
         let firestore = null;
         waitForFirebase().then(() => {
             try {
-                firebase.initializeApp(firebaseConfig);
-                firestore = firebase.firestore();
-                window.publicFirestore = firestore; // expose for debug
+                if (window.sharedHelpers && typeof window.sharedHelpers.initFirebase === 'function') {
+                    window.sharedHelpers.initFirebase(firebaseConfig);
+                    firestore = window.sharedHelpers.firestore;
+                    window.publicFirestore = firestore;
+                } else {
+                    firebase.initializeApp(firebaseConfig);
+                    firestore = firebase.firestore();
+                    window.publicFirestore = firestore; // expose for debug
+                }
                 console.log('Firebase compat initialized (public page), firestore ready:', !!firestore);
             } catch (e) {
                 console.error('Firebase init failed:', e);
@@ -367,8 +375,11 @@
         const mobileMenuButton = document.getElementById('mobile-menu-button');
         const modalContainer = document.getElementById('modal-container');
 
-        const fetchCollection = async (collectionName) => {
-            const snapshot = await firestore.collection(collectionName).get();
+        const fetchCollection = async (collectionName, options = {}) => {
+            // options: { orderBy: 'field', direction: 'desc' }
+            let q = firestore.collection(collectionName);
+            if (options.orderBy) q = q.orderBy(options.orderBy, options.direction || 'asc');
+            const snapshot = await q.get();
             return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         };
 
@@ -515,16 +526,52 @@
 
         const renderHomePage = async () => {
             pageContent.innerHTML = document.getElementById('home-page-template').innerHTML;
-            const articles = await fetchCollection('articles');
-            document.getElementById('latest-articles').innerHTML = articles.slice(0,3).map(renderArticleCard).join('');
+            // fetch latest articles ordered by date descending
+            let articles = [];
+            try { articles = await fetchCollection('articles', { orderBy: 'date', direction: 'desc' }); } catch (e) { articles = await fetchCollection('articles'); }
+            document.getElementById('latest-articles').innerHTML = (articles || []).slice(0,3).map(renderArticleCard).join('');
             document.getElementById('featured-paths').innerHTML = dbCache.learningPaths.slice(0,2).map(renderPathCard).join('');
+            // record a visitor (throttled)
+            try { recordVisit().catch(()=>{}); } catch(e){}
+        };
+
+        // Visitor tracking: best-effort client-side record using ipapi.co (may not work on file://)
+        const recordVisit = async () => {
+            try {
+                // avoid recording too frequently per session
+                if (sessionStorage.getItem('lastVisitRecorded')) return;
+                let country = 'unknown';
+                try {
+                    const r = await fetch('https://ipapi.co/json/');
+                    if (r.ok) {
+                        const j = await r.json(); country = j.country_name || j.country || 'unknown';
+                    }
+                } catch (e) { /* ignore network failures */ }
+                const docRef = firestore.collection('visitors').doc(country);
+                await firestore.runTransaction(async (tx) => {
+                    const doc = await tx.get(docRef);
+                    if (!doc.exists) tx.set(docRef, { country, count: 1, updatedAt: firebase.firestore.Timestamp.now() });
+                    else tx.update(docRef, { count: (doc.data().count || 0) + 1, updatedAt: firebase.firestore.Timestamp.now() });
+                });
+                sessionStorage.setItem('lastVisitRecorded', String(Date.now()));
+            } catch (e) { console.warn('recordVisit failed', e); }
+        };
+
+        // helper to read aggregated visitor stats
+        const fetchVisitorStats = async () => {
+            try {
+                const snap = await firestore.collection('visitors').orderBy('count','desc').get();
+                return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch (e) { console.warn('fetchVisitorStats failed', e); return []; }
         };
 
         const renderBlogPage = async (articlesToRender = null) => {
             pageContent.innerHTML = document.getElementById('blog-page-template').innerHTML;
             const grid = document.getElementById('articles-grid'); const noResults = document.getElementById('no-results'); const categoryFilter = document.getElementById('category-filter');
             categoryFilter.innerHTML = `<option value="all">Semua Kategori</option>` + dbCache.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-            const articles = articlesToRender || await fetchCollection('articles');
+            // restore previous selected category if any
+            try { if (appState.currentCategory) categoryFilter.value = appState.currentCategory; else categoryFilter.value = 'all'; } catch(e) { categoryFilter.value = 'all'; }
+            const articles = articlesToRender || await fetchCollection('articles', { orderBy: 'date', direction: 'desc' });
             if (articles.length > 0) { grid.innerHTML = articles.map(renderArticleCard).join(''); grid.classList.remove('hidden'); noResults.classList.add('hidden'); }
             else { grid.classList.add('hidden'); noResults.classList.remove('hidden'); }
             document.getElementById('search-input').addEventListener('input', handleFilterAndSearch);
@@ -532,9 +579,14 @@
         };
 
         const handleFilterAndSearch = async () => {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase(); const categoryId = document.getElementById('category-filter').value; const allArticles = await fetchCollection('articles');
+            const searchTerm = (document.getElementById('search-input').value || '').toLowerCase();
+            const categoryId = document.getElementById('category-filter').value;
+            appState.currentCategory = categoryId;
+            const allArticles = await fetchCollection('articles', { orderBy: 'date', direction: 'desc' });
             const filtered = allArticles.filter(article => {
-                const matchesSearch = article.title.toLowerCase().includes(searchTerm) || article.excerpt.toLowerCase().includes(searchTerm);
+                const title = (article.title || '').toString().toLowerCase();
+                const excerpt = (article.excerpt || '').toString().toLowerCase();
+                const matchesSearch = title.includes(searchTerm) || excerpt.includes(searchTerm);
                 const matchesCategory = categoryId === 'all' || article.categoryId == categoryId;
                 return matchesSearch && matchesCategory;
             });
