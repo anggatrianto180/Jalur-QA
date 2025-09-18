@@ -222,10 +222,16 @@
                 const countries = snap.docs.map(d => ({ country: d.id, ...(d.data() || {}) }));
                 const total = countries.reduce((s, c) => s + (c.count || 0), 0);
                 countries.sort((a, b) => (b.count || 0) - (a.count || 0));
-                return { total, countries };
+                // also fetch recent visit samples for inspection
+                let recent = [];
+                try {
+                    const rSnap = await firestore.collection('visits').orderBy('createdAt','desc').limit(10).get();
+                    recent = rSnap.docs.map(d => ({ id: d.id, ...(d.data()||{}) }));
+                } catch (e) { /* ignore visits read failures */ }
+                return { total, countries, recent };
             } catch (e) {
                 console.error('Failed to fetch visitor stats:', e);
-                return { total: 0, countries: [] };
+                return { total: 0, countries: [], recent: [] };
             }
         };
 
@@ -234,6 +240,7 @@
                 const stats = await fetchVisitorStats();
                 const top = stats.countries.slice(0, 10);
                 const listHtml = top.length ? top.map(c => `<li class="flex justify-between items-center py-1 border-b"><span>${c.country}</span><span class="font-semibold">${c.count || 0}</span></li>`).join('') : '<li class="text-gray-500">Belum ada data kunjungan</li>';
+                const recentHtml = stats.recent && stats.recent.length ? stats.recent.map(rv => `<li class="text-xs py-1 border-b"><span class="font-medium">${rv.country}</span> — <span class="text-gray-600">${rv.path || ''}</span> <span class="text-gray-400">(${new Date((rv.createdAt && rv.createdAt.seconds) ? rv.createdAt.seconds*1000 : Date.now()).toLocaleString()})</span></li>`).join('') : '<li class="text-gray-500 text-xs">Belum ada sampel kunjungan</li>';
                 const html = `
                     <div class="bg-white p-6 rounded-lg shadow">
                         <h3 class="text-lg font-semibold text-gray-500">Kunjungan</h3>
@@ -241,6 +248,10 @@
                         <div class="mt-4">
                             <h4 class="text-sm font-medium text-gray-600 mb-2">Negara Teratas</h4>
                             <ul class="text-sm">${listHtml}</ul>
+                        </div>
+                        <div class="mt-4">
+                            <h4 class="text-sm font-medium text-gray-600 mb-2">Sampel Kunjungan Terbaru</h4>
+                            <ul class="text-xs text-gray-700">${recentHtml}</ul>
                         </div>
                     </div>
                 `;

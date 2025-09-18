@@ -538,8 +538,6 @@
         // Visitor tracking: best-effort client-side record using ipapi.co (may not work on file://)
         const recordVisit = async () => {
             try {
-                // avoid recording too frequently per session
-                if (sessionStorage.getItem('lastVisitRecorded')) return;
                 let country = 'unknown';
                 try {
                     const r = await fetch('https://ipapi.co/json/');
@@ -547,13 +545,19 @@
                         const j = await r.json(); country = j.country_name || j.country || 'unknown';
                     }
                 } catch (e) { /* ignore network failures */ }
+                const path = window.location.pathname || 'index.html';
+                const ua = navigator.userAgent || '';
+                // record a per-visit doc for full fidelity
+                try { await firestore.collection('visits').add({ country, path, ua, createdAt: firebase.firestore.Timestamp.now() }); } catch(e) { console.warn('failed adding visit doc', e); }
+                // increment lightweight country counter for quick aggregation
                 const docRef = firestore.collection('visitors').doc(country);
-                await firestore.runTransaction(async (tx) => {
-                    const doc = await tx.get(docRef);
-                    if (!doc.exists) tx.set(docRef, { country, count: 1, updatedAt: firebase.firestore.Timestamp.now() });
-                    else tx.update(docRef, { count: (doc.data().count || 0) + 1, updatedAt: firebase.firestore.Timestamp.now() });
-                });
-                sessionStorage.setItem('lastVisitRecorded', String(Date.now()));
+                try {
+                    await firestore.runTransaction(async (tx) => {
+                        const doc = await tx.get(docRef);
+                        if (!doc.exists) tx.set(docRef, { country, count: 1, updatedAt: firebase.firestore.Timestamp.now() });
+                        else tx.update(docRef, { count: (doc.data().count || 0) + 1, updatedAt: firebase.firestore.Timestamp.now() });
+                    });
+                } catch (e) { console.warn('visitor counter transaction failed', e); }
             } catch (e) { console.warn('recordVisit failed', e); }
         };
 
