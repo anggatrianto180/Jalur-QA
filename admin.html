@@ -281,7 +281,15 @@
                                 <div><label class="block text-sm font-medium">Kategori</label><select name="categoryId" class="mt-1 w-full border-gray-300 rounded-md shadow-sm bg-white" required>${categoryOptions}</select></div>
                                 <div>
                                     <label class="block text-sm font-medium">URL Gambar (opsional)</label>
-                                    <input type="text" name="image" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.image || ''}">
+                                    <div class="flex gap-2 items-center">
+                                        <input type="text" name="image" id="article-image-input" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.image || ''}">
+                                        <input type="file" id="article-image-file" accept="image/*" class="hidden" />
+                                        <button type="button" id="article-image-upload-btn" class="bg-green-500 text-white px-3 py-1 rounded">Upload</button>
+                                    </div>
+                                    <div id="article-image-preview" class="mt-2 flex items-center gap-3">
+                                        <img id="article-image-thumb" src="${article.image || ''}" alt="Preview" class="w-36 h-24 object-cover rounded border" onerror="this.dataset.error='1';this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image'" />
+                                        <div id="article-image-status" class="text-sm text-gray-600">${article.image ? '' : 'Tidak ada gambar'}</div>
+                                    </div>
                                 </div>
                                 <div><label class="block text-sm font-medium">Kutipan</label><textarea name="excerpt" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.excerpt || ''}</textarea></div>
                                 <div>
@@ -346,6 +354,120 @@
                     modalContainer.appendChild(overlay);
                     const close = document.getElementById('close-preview'); if (close) close.addEventListener('click', (ev) => { ev.preventDefault(); const el = document.getElementById('article-preview-overlay'); if (el) el.remove(); });
                 });
+                // image preview wiring with Drive fallback variants
+                try {
+                    const imgInput = document.getElementById('article-image-input');
+                    const thumb = document.getElementById('article-image-thumb');
+                    const status = document.getElementById('article-image-status');
+                    if (imgInput) {
+                        const buildDriveVariants = (rawSrc) => {
+                            const list = [];
+                            if (!rawSrc) return list;
+                            let s = rawSrc.toString().trim();
+                            // push original
+                            list.push(s);
+                            try {
+                                // try to extract drive file id from common patterns
+                                // patterns: /d/FILE_ID or open?id=FILE_ID
+                                const idMatch = s.match(/(?:\/d\/|open\?id=)([-\w]{25,})/);
+                                let id = idMatch && idMatch[1];
+                                if (!id) {
+                                    const generic = s.match(/[-\w]{25,}/);
+                                    id = generic && generic[0];
+                                }
+                                if (s.includes('drive.google.com') && id) {
+                                    list.push(`https://drive.google.com/uc?export=view&id=${id}`);
+                                    list.push(`https://drive.google.com/uc?export=download&id=${id}`);
+                                    list.push(`https://drive.googleusercontent.com/uc?id=${id}`);
+                                }
+                            } catch (e) {}
+                            // dedupe preserving order
+                            return Array.from(new Set(list));
+                        };
+
+                        const updateThumb = (val) => {
+                            const v = (val || '').toString().trim();
+                            if (!v) {
+                                if (thumb) thumb.src = 'https://placehold.co/160x90/E2E8F0/333?text=No+Image';
+                                if (status) status.textContent = 'Tidak ada gambar';
+                                if (thumb) { thumb.dataset.variants = ''; thumb.dataset.variantIndex = '0'; thumb.dataset.error = ''; }
+                                return;
+                            }
+                            // if value is an <img> tag, extract src
+                            const m = v.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/i);
+                            const src = m && m[1] ? m[1] : v;
+                            const variants = buildDriveVariants(src);
+                            if (thumb) {
+                                thumb.dataset.variants = JSON.stringify(variants);
+                                thumb.dataset.variantIndex = '0';
+                                thumb.dataset.error = '';
+                                thumb.src = variants[0];
+                            }
+                            if (status) status.textContent = 'Memuat...';
+                        };
+
+                        imgInput.addEventListener('input', (e) => updateThumb(e.target.value));
+                        // initial run
+                        updateThumb(imgInput.value || '');
+
+                        if (thumb) {
+                            thumb.addEventListener('load', () => { if (status) status.textContent = 'Gambar berhasil dimuat'; if (thumb) thumb.dataset.error = ''; });
+                            thumb.addEventListener('error', () => {
+                                try {
+                                    const variants = thumb.dataset.variants ? JSON.parse(thumb.dataset.variants) : [];
+                                    let idx = parseInt(thumb.dataset.variantIndex || '0', 10);
+                                    if (isNaN(idx)) idx = 0;
+                                    if (variants && idx < variants.length - 1) {
+                                        // try next variant
+                                        idx += 1;
+                                        thumb.dataset.variantIndex = String(idx);
+                                        const next = variants[idx];
+                                        if (status) status.textContent = `Gagal memuat, mencoba varian ${idx + 1}/${variants.length}...`;
+                                        thumb.src = next;
+                                        return;
+                                    }
+                                } catch (e) { console.warn('Drive variant retry failed', e); }
+                                if (status) status.textContent = 'Gagal memuat gambar (cek URL atau share permission)';
+                                if (thumb) thumb.dataset.error = '1';
+                            });
+                        }
+                    }
+                } catch (e) { console.warn('image preview wiring failed', e); }
+
+                        // upload button wiring: POST file to local upload server and populate image input with returned path
+                        try {
+                            const uploadBtn = document.getElementById('article-image-upload-btn');
+                            const fileInput = document.getElementById('article-image-file');
+                            const imgInput = document.getElementById('article-image-input');
+                            const previewThumb = document.getElementById('article-image-thumb');
+                            const previewStatus = document.getElementById('article-image-status');
+                            if (uploadBtn && fileInput && imgInput) {
+                                uploadBtn.addEventListener('click', () => fileInput.click());
+                                fileInput.addEventListener('change', async (ev) => {
+                                    const f = ev.target.files && ev.target.files[0];
+                                    if (!f) return;
+                                    // show temporary preview
+                                    try { previewThumb.src = URL.createObjectURL(f); previewStatus.textContent = 'Menyiapkan upload...'; } catch(e){}
+                                    const form = new FormData(); form.append('image', f);
+                                    try {
+                                        const resp = await fetch((window.LOCAL_UPLOAD_ENDPOINT || 'http://localhost:4000') + '/upload', { method: 'POST', body: form });
+                                        const j = await resp.json();
+                                        if (j && j.url) {
+                                            // set the returned relative path into the input (absolute path for preview)
+                                            const full = window.LOCAL_UPLOAD_BASE ? (window.LOCAL_UPLOAD_BASE.replace(/\/$/, '') + j.url) : (j.url);
+                                            imgInput.value = full;
+                                            imgInput.dispatchEvent(new Event('input'));
+                                            previewStatus.textContent = 'Upload selesai';
+                                        } else {
+                                            previewStatus.textContent = 'Upload selesai (tapi server tidak mengembalikan URL)';
+                                        }
+                                    } catch (err) {
+                                        console.error('Upload failed', err);
+                                        previewStatus.textContent = 'Gagal upload: ' + (err && err.message ? err.message : 'network error');
+                                    }
+                                });
+                            }
+                        } catch (e) { console.warn('upload wiring failed', e); }
             } catch (e) { console.warn('Quill init failed, falling back to contentEditable', e); }
             document.getElementById('close-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
             document.getElementById('cancel-modal-btn').addEventListener('click', () => modalContainer.innerHTML = '');
@@ -369,10 +491,32 @@
                     ADD_ATTR: ['class','style'],
                     ALLOWED_CSS_PROPERTIES: ['font-size','color','background-color','text-align','font-weight','font-style','font-family','margin-left','margin-right','margin-top','margin-bottom','padding-left']
                 }) : rawContent;
+                // normalize image URL (handle pasted <img> tags and Google Drive links)
+                const normalizeImageUrl = (raw) => {
+                    if (!raw) return '';
+                    let s = raw.toString().trim();
+                    // if user pasted an <img ...> tag, extract src
+                    try {
+                        const m = s.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/i);
+                        if (m && m[1]) s = m[1];
+                    } catch (e) {}
+                    // handle Google Drive share links and convert to direct preview
+                    try {
+                        // patterns: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+                        // or https://drive.google.com/open?id=FILE_ID
+                        const idMatch = s.match(/[-\w]{25,}/);
+                        if (s.includes('drive.google.com') && idMatch && idMatch[0]) {
+                            const id = idMatch[0];
+                            return `https://drive.google.com/uc?export=view&id=${id}`;
+                        }
+                    } catch (e) {}
+                    return s;
+                };
+
                 const articleData = {
                     title: form.get('title'),
                     categoryId: form.get('categoryId'),
-                    image: form.get('image'),
+                    image: normalizeImageUrl(form.get('image')),
                     excerpt: form.get('excerpt'),
                     content: safeContent,
                     author: 'Admin',

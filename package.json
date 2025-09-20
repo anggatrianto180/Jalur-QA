@@ -1,4 +1,22 @@
 {
+  "name": "jalur-qa-local-uploader",
+  "version": "1.0.0",
+  "description": "Local image upload server for Jalur QA project",
+  "main": "upload-server.js",
+  "scripts": {
+    "start-upload-server": "node upload-server.js",
+    "start-upload-server:git": "cross-env ENABLE_GIT_COMMIT=1 ENABLE_GIT_PUSH=0 node upload-server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
+{
   "name": "web-software-quality-assurance",
   "version": "1.0.0",
   "main": "set-admin-claim.js",
