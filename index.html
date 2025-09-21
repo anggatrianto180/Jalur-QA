@@ -331,7 +331,7 @@
             apiKey: "AIzaSyC4i7BuTVHx7EaQxyn3Dlv83HTVdtgn9Ik",
             authDomain: "jalur-qa.firebaseapp.com",
             projectId: "jalur-qa",
-            storageBucket: "jalur-qa.appspot.com",
+            storageBucket: "jalur-qa.firebasestorage.app",
             messagingSenderId: "928716547519",
             appId: "1:928716547519:web:10f2e2cd1d84e1f5ca2d0a"
         };
@@ -430,6 +430,9 @@
         };
 
         const renderArticleCard = (article) => {
+            // This function returns HTML for an article card. Image resolution (if stored in Firebase Storage)
+            // will be handled before injecting into the DOM in render functions so here we assume
+            // article.image is already a usable URL.
             const hasImage = article.image && String(article.image).trim() !== '';
             const categoryName = getCategoryName(article.categoryId);
             if (hasImage) {
@@ -529,7 +532,12 @@
             // fetch latest articles ordered by date descending
             let articles = [];
             try { articles = await fetchCollection('articles', { orderBy: 'date', direction: 'desc' }); } catch (e) { articles = await fetchCollection('articles'); }
-            document.getElementById('latest-articles').innerHTML = (articles || []).slice(0,3).map(renderArticleCard).join('');
+            // resolve article images that might be storage paths
+            const resolvedArticles = await Promise.all((articles || []).slice(0,3).map(async (a) => {
+                try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') a.image = await window.sharedHelpers.resolveImageUrl(a.image); } catch(e) { /* ignore */ }
+                return a;
+            }));
+            document.getElementById('latest-articles').innerHTML = (resolvedArticles || []).map(renderArticleCard).join('');
             document.getElementById('featured-paths').innerHTML = dbCache.learningPaths.slice(0,2).map(renderPathCard).join('');
             // record a visitor (throttled)
             try { recordVisit().catch(()=>{}); } catch(e){}
@@ -575,7 +583,9 @@
             categoryFilter.innerHTML = `<option value="all">Semua Kategori</option>` + dbCache.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
             // restore previous selected category if any
             try { if (appState.currentCategory) categoryFilter.value = appState.currentCategory; else categoryFilter.value = 'all'; } catch(e) { categoryFilter.value = 'all'; }
-            const articles = articlesToRender || await fetchCollection('articles', { orderBy: 'date', direction: 'desc' });
+            let articles = articlesToRender || await fetchCollection('articles', { orderBy: 'date', direction: 'desc' });
+            // resolve images for page list
+            articles = await Promise.all(articles.map(async (a) => { try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') a.image = await window.sharedHelpers.resolveImageUrl(a.image); } catch(e){} return a; }));
             if (articles.length > 0) { grid.innerHTML = articles.map(renderArticleCard).join(''); grid.classList.remove('hidden'); noResults.classList.add('hidden'); }
             else { grid.classList.add('hidden'); noResults.classList.remove('hidden'); }
             document.getElementById('search-input').addEventListener('input', handleFilterAndSearch);
@@ -600,6 +610,8 @@
         const renderArticlePage = async (id) => {
             const articleRef = await firestore.collection('articles').doc(id).get(); if (!articleRef.exists) { navigateTo('home'); return; }
             const article = { id: articleRef.id, ...articleRef.data() };
+            // try resolving any storage path to a real URL
+            try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') article.image = await window.sharedHelpers.resolveImageUrl(article.image); } catch(e) { /* ignore */ }
             pageContent.innerHTML = document.getElementById('article-page-template').innerHTML; const wrapper = document.getElementById('article-content-wrapper');
             const date = (article.date && typeof article.date.toDate === 'function') ? article.date.toDate() : new Date(article.date);
             const categoryName = getCategoryName(article.categoryId);

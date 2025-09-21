@@ -125,6 +125,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+    <script src="./shared.js"></script>
     <!-- DOMPurify for sanitizing editor HTML (protect public render) -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
     <!-- Quill editor (for WYSIWYG) -->
@@ -137,7 +139,7 @@
             apiKey: "AIzaSyC4i7BuTVHx7EaQxyn3Dlv83HTVdtgn9Ik",
             authDomain: "jalur-qa.firebaseapp.com",
             projectId: "jalur-qa",
-            storageBucket: "jalur-qa.appspot.com",
+            storageBucket: "jalur-qa.firebasestorage.app",
             messagingSenderId: "928716547519",
             appId: "1:928716547519:web:10f2e2cd1d84e1f5ca2d0a"
         };
@@ -152,7 +154,8 @@
         try { if (window.sharedHelpers && typeof window.sharedHelpers.initFirebase === 'function') { window.sharedHelpers.initFirebase(firebaseConfig); window.sharedHelpers.firestore = window.sharedHelpers.firestore || window.firebase.firestore(); window.sharedHelpers.auth = window.sharedHelpers.auth || window.firebase.auth(); } else { firebase.initializeApp(firebaseConfig); window.sharedHelpers = window.sharedHelpers || {}; window.sharedHelpers.firestore = window.firebase.firestore(); window.sharedHelpers.auth = window.firebase.auth(); } } catch(e) { console.warn('Firebase init fallback', e); }
         const firestore = window.sharedHelpers.firestore;
         const auth = window.sharedHelpers.auth;
-        console.log('Admin: firebase initialized (shared)');
+    console.log('Admin: firebase initialized (shared)');
+    try { console.log('Firebase Storage available?', !!(window.sharedHelpers.storage || (window.firebase && window.firebase.storage))); } catch(e) {}
 
         // Basic app state and cache
         const dbCache = { categories: [], learningPaths: [], tools: [], comments: [] };
@@ -287,9 +290,9 @@
                                         <button type="button" id="article-image-upload-btn" class="bg-green-500 text-white px-3 py-1 rounded">Upload</button>
                                     </div>
                                     <div id="article-image-preview" class="mt-2 flex items-center gap-3">
-                                        <img id="article-image-thumb" src="${article.image || ''}" alt="Preview" class="w-36 h-24 object-cover rounded border" onerror="this.dataset.error='1';this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image'" />
-                                        <div id="article-image-status" class="text-sm text-gray-600">${article.image ? '' : 'Tidak ada gambar'}</div>
-                                    </div>
+                                                            <img id="article-image-thumb" src="" alt="Preview" class="w-36 h-24 object-cover rounded border" onerror="this.dataset.error='1';this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image'" />
+                                                            <div id="article-image-status" class="text-sm text-gray-600">{loading...}</div>
+                                                        </div>
                                 </div>
                                 <div><label class="block text-sm font-medium">Kutipan</label><textarea name="excerpt" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required>${article.excerpt || ''}</textarea></div>
                                 <div>
@@ -354,11 +357,34 @@
                     modalContainer.appendChild(overlay);
                     const close = document.getElementById('close-preview'); if (close) close.addEventListener('click', (ev) => { ev.preventDefault(); const el = document.getElementById('article-preview-overlay'); if (el) el.remove(); });
                 });
-                // image preview wiring with Drive fallback variants
+                        // image preview wiring with Drive fallback variants
                 try {
                     const imgInput = document.getElementById('article-image-input');
                     const thumb = document.getElementById('article-image-thumb');
                     const status = document.getElementById('article-image-status');
+                            // if article.image exists, try resolving storage path to a download URL
+                            (async function tryResolveInitialImage(){
+                                try {
+                                    if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') {
+                                        const raw = (document.getElementById('article-image-input') && document.getElementById('article-image-input').value) || '';
+                                        if (raw && raw.trim()) {
+                                            status.textContent = 'Memeriksa gambar...';
+                                            const resolved = await window.sharedHelpers.resolveImageUrl(raw);
+                                            // if resolved differs or looks like a URL, set thumb
+                                            if (resolved) {
+                                                thumb.src = resolved;
+                                                // ensure input contains the resolved URL so saving uses a web URL
+                                                document.getElementById('article-image-input').value = resolved;
+                                                status.textContent = '';
+                                            } else {
+                                                status.textContent = raw ? '' : 'Tidak ada gambar';
+                                            }
+                                        } else {
+                                            status.textContent = 'Tidak ada gambar';
+                                        }
+                                    }
+                                } catch (e) { console.warn('initial image resolve failed', e); if (status) status.textContent = 'Tidak ada gambar'; }
+                            })();
                     if (imgInput) {
                         const buildDriveVariants = (rawSrc) => {
                             const list = [];
@@ -448,16 +474,51 @@
                                     if (!f) return;
                                     // show temporary preview
                                     try { previewThumb.src = URL.createObjectURL(f); previewStatus.textContent = 'Menyiapkan upload...'; } catch(e){}
-                                    const form = new FormData(); form.append('image', f);
+                                    // Prefer Firebase Storage upload via sharedHelpers
                                     try {
+                                        if (window.sharedHelpers && typeof window.sharedHelpers.uploadFileToStorage === 'function') {
+                                            if (!auth || !auth.currentUser) {
+                                                previewStatus.textContent = 'Silakan login admin sebelum mengunggah ke Firebase Storage';
+                                                throw new Error('not-authenticated');
+                                            }
+                                            const safeName = 'images/' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                                            previewStatus.textContent = 'Mengunggah ke Firebase Storage...';
+                                            const downloadUrl = await window.sharedHelpers.uploadFileToStorage(f, safeName);
+                                            console.log('Firebase upload success', downloadUrl);
+                                            if (downloadUrl) {
+                                                imgInput.value = downloadUrl;
+                                                imgInput.dispatchEvent(new Event('input'));
+                                                try { previewThumb.src = downloadUrl; } catch(e){}
+                                                previewStatus.textContent = 'Upload selesai (Firebase Storage)';
+                                                return;
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.warn('Firebase storage upload failed, falling back to local server', err);
+                                        // better error message
+                                        let friendly = 'Gagal upload ke Firebase (cek console untuk detail)';
+                                        if (err && err.code === 'storage/unauthorized' || (err && /permission|auth/i.test(err.message || ''))) {
+                                            friendly = 'Gagal upload ke Firebase: periksa aturan Storage dan pastikan Anda login/admin.';
+                                        } else if (err && err.message === 'not-authenticated') {
+                                            friendly = 'Silakan login sebelum mengunggah.';
+                                        }
+                                        previewStatus.textContent = friendly;
+                                        // show detailed modal with error info to help debugging
+                                        try {
+                                            modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-lg"><h3 class="text-lg font-bold mb-2">Upload Firebase Gagal</h3><pre style="white-space:pre-wrap;">${(err && err.code ? 'Code: ' + err.code + '\n' : '')}${(err && err.message ? 'Message: ' + err.message + '\n' : '')}${JSON.stringify(err, null, 2)}</pre><div class="mt-4 text-right"><button id="close-upload-err" class="bg-gray-200 px-3 py-1 rounded">Tutup</button></div></div></div>`;
+                                            document.getElementById('close-upload-err').addEventListener('click', () => { modalContainer.innerHTML = ''; });
+                                        } catch (e) { console.warn('failed to show upload error modal', e); }
+                                    }
+                                    // fallback to local upload server
+                                    try {
+                                        const form = new FormData(); form.append('image', f);
                                         const resp = await fetch((window.LOCAL_UPLOAD_ENDPOINT || 'http://localhost:4000') + '/upload', { method: 'POST', body: form });
                                         const j = await resp.json();
                                         if (j && j.url) {
-                                            // set the returned relative path into the input (absolute path for preview)
                                             const full = window.LOCAL_UPLOAD_BASE ? (window.LOCAL_UPLOAD_BASE.replace(/\/$/, '') + j.url) : (j.url);
                                             imgInput.value = full;
                                             imgInput.dispatchEvent(new Event('input'));
-                                            previewStatus.textContent = 'Upload selesai';
+                                            previewStatus.textContent = 'Upload selesai (server lokal)';
                                         } else {
                                             previewStatus.textContent = 'Upload selesai (tapi server tidak mengembalikan URL)';
                                         }
@@ -755,7 +816,30 @@
             </div>`;
             document.getElementById('cancel-delete-btn').addEventListener('click', () => modalContainer.innerHTML = '');
             document.getElementById('confirm-delete-btn').addEventListener('click', async (e) => {
-                const idToDelete = e.target.dataset.id; const collectionToDelete = e.target.dataset.collection; try { await firestore.collection(collectionToDelete).doc(idToDelete).delete(); } catch (err) { console.error('Gagal menghapus:', err); if (isPermissionDenied(err)) showFirestorePermissionModal(collectionToDelete); modalContainer.innerHTML = ''; return; }
+                const idToDelete = e.target.dataset.id; const collectionToDelete = e.target.dataset.collection;
+                try {
+                    if (collectionToDelete === 'articles') {
+                        // fetch the article to see if it has an image we can delete
+                        try {
+                            const doc = await firestore.collection('articles').doc(idToDelete).get();
+                            if (doc.exists) {
+                                const art = doc.data();
+                                const img = art && (art.image || '');
+                                if (img && window.sharedHelpers && typeof window.sharedHelpers.deleteFileFromStorage === 'function') {
+                                    try {
+                                        await window.sharedHelpers.deleteFileFromStorage(img);
+                                        console.log('Associated image deleted from Storage for article', idToDelete);
+                                    } catch (errDel) {
+                                        console.warn('Failed deleting associated image for article', idToDelete, errDel);
+                                        // show non-blocking modal warning but still proceed to delete the doc
+                                        try { modalContainer.innerHTML = `<div class="modal-overlay"><div class="bg-white rounded-lg p-6 max-w-md"><h3 class="text-lg font-bold mb-2">Peringatan</h3><p>Gagal menghapus file gambar terkait artikel. Dokumen artikel akan tetap dihapus. Error: ${errDel && errDel.message ? errDel.message : JSON.stringify(errDel)}</p><div class="mt-4 text-right"><button id="close-del-warn" class="bg-gray-200 px-3 py-1 rounded">Tutup</button></div></div></div>`; document.getElementById('close-del-warn').addEventListener('click', () => { modalContainer.innerHTML = ''; }); } catch (e) { console.warn('Failed showing delete image warning modal', e); }
+                                    }
+                                }
+                            }
+                        } catch (e) { console.warn('Failed fetching article for image deletion', e); }
+                    }
+                    await firestore.collection(collectionToDelete).doc(idToDelete).delete();
+                } catch (err) { console.error('Gagal menghapus:', err); if (isPermissionDenied(err)) showFirestorePermissionModal(collectionToDelete); modalContainer.innerHTML = ''; return; }
                 if (collectionToDelete === 'categories') dbCache.categories = await fetchCollection('categories');
                 if (collectionToDelete === 'learningPaths') dbCache.learningPaths = await fetchCollection('learningPaths');
                 if (collectionToDelete === 'comments') dbCache.comments = await fetchCollection('comments');
@@ -908,6 +992,7 @@
 
         // Init: render login if not logged
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { if (!auth.currentUser) pageContent.innerHTML = document.getElementById('admin-login-page-template').innerHTML; });
+    try { console.log('Auth currentUser on load:', auth && auth.currentUser ? { uid: auth.currentUser.uid, email: auth.currentUser.email } : null); } catch(e) {}
 
     </script>
 
