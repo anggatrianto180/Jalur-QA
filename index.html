@@ -438,7 +438,7 @@
             if (hasImage) {
                 return `
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                    <img src="${article.image}" alt="${article.title}" class="w-full h-48 object-cover">
+                    <img src="${article.image}" alt="${article.title}" class="w-full h-48 object-cover" data-orig="${article.image}" onerror="(window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') ? window.sharedHelpers.tryResolveAndSetImg(this) : (this.src='https://placehold.co/600x400/E2E8F0/333?text=No+Image')">
                     <div class="p-6">
                         <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
                         <h3 class="font-bold text-xl mt-2 mb-3 h-14 overflow-hidden">${article.title}</h3>
@@ -624,7 +624,7 @@
                 <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
                 <h1 class="text-3xl md:text-4xl font-bold mt-2 mb-4">${article.title}</h1>
                 <div class="text-gray-500 text-sm mb-6"><span>Oleh ${article.author}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
-                ${article.image && String(article.image).trim() !== '' ? `<img src="${article.image}" alt="${article.title}" class="w-full rounded-lg mb-8">` : `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg"><h2 class="text-2xl font-bold">${article.title}</h2></div>`}
+                ${article.image && String(article.image).trim() !== '' ? `<img src="${article.image}" alt="${article.title}" class="w-full rounded-lg mb-8" data-orig="${article.image}" onerror="(window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') ? window.sharedHelpers.tryResolveAndSetImg(this) : (this.src='https://placehold.co/600x400/E2E8F0/333?text=No+Image')">` : `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg"><h2 class="text-2xl font-bold">${article.title}</h2></div>`}
                 <div class="article-body max-w-none">${safeContent}</div>
             `;
             const tocList = document.getElementById('toc-list'); const headings = wrapper.querySelectorAll('h2'); tocList.innerHTML = '';

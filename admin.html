@@ -280,6 +280,7 @@
                     </div>
                     <form id="article-form" class="p-6 space-y-4">
                                 <input type="hidden" name="id" value="${article.id || ''}">
+                                <input type="hidden" id="article-original-image" value="${article.image || ''}">
                                 <div><label class="block text-sm font-medium">Judul</label><input type="text" name="title" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.title || ''}" required></div>
                                 <div><label class="block text-sm font-medium">Kategori</label><select name="categoryId" class="mt-1 w-full border-gray-300 rounded-md shadow-sm bg-white" required>${categoryOptions}</select></div>
                                 <div>
@@ -288,9 +289,10 @@
                                         <input type="text" name="image" id="article-image-input" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" value="${article.image || ''}">
                                         <input type="file" id="article-image-file" accept="image/*" class="hidden" />
                                         <button type="button" id="article-image-upload-btn" class="bg-green-500 text-white px-3 py-1 rounded">Upload</button>
+                                        <button type="button" id="article-image-delete-btn" class="bg-red-500 text-white px-3 py-1 rounded">Hapus Gambar</button>
                                     </div>
                                     <div id="article-image-preview" class="mt-2 flex items-center gap-3">
-                                                            <img id="article-image-thumb" src="" alt="Preview" class="w-36 h-24 object-cover rounded border" onerror="this.dataset.error='1';this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image'" />
+                                                            <img id="article-image-thumb" src="" alt="Preview" class="w-36 h-24 object-cover rounded border" data-orig="" onerror="(window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') ? window.sharedHelpers.tryResolveAndSetImg(this) : (this.dataset.error='1',this.src='https://placehold.co/160x90/E2E8F0/333?text=No+Image')" />
                                                             <div id="article-image-status" class="text-sm text-gray-600">{loading...}</div>
                                                         </div>
                                 </div>
@@ -411,12 +413,12 @@
                             return Array.from(new Set(list));
                         };
 
-                        const updateThumb = (val) => {
+                            const updateThumb = (val) => {
                             const v = (val || '').toString().trim();
                             if (!v) {
                                 if (thumb) thumb.src = 'https://placehold.co/160x90/E2E8F0/333?text=No+Image';
                                 if (status) status.textContent = 'Tidak ada gambar';
-                                if (thumb) { thumb.dataset.variants = ''; thumb.dataset.variantIndex = '0'; thumb.dataset.error = ''; }
+                                if (thumb) { thumb.dataset.variants = ''; thumb.dataset.variantIndex = '0'; thumb.dataset.error = ''; thumb.dataset.orig = ''; }
                                 return;
                             }
                             // if value is an <img> tag, extract src
@@ -427,6 +429,7 @@
                                 thumb.dataset.variants = JSON.stringify(variants);
                                 thumb.dataset.variantIndex = '0';
                                 thumb.dataset.error = '';
+                                thumb.dataset.orig = src;
                                 thumb.src = variants[0];
                             }
                             if (status) status.textContent = 'Memuat...';
@@ -467,6 +470,7 @@
                             const imgInput = document.getElementById('article-image-input');
                             const previewThumb = document.getElementById('article-image-thumb');
                             const previewStatus = document.getElementById('article-image-status');
+                            const deleteBtn = document.getElementById('article-image-delete-btn');
                             if (uploadBtn && fileInput && imgInput) {
                                 uploadBtn.addEventListener('click', () => fileInput.click());
                                 fileInput.addEventListener('change', async (ev) => {
@@ -481,14 +485,41 @@
                                                 previewStatus.textContent = 'Silakan login admin sebelum mengunggah ke Firebase Storage';
                                                 throw new Error('not-authenticated');
                                             }
-                                            const safeName = 'images/' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                                            const randomSuffix = Math.floor(Math.random()*90000)+10000;
+                                            const safeName = 'images/' + Date.now() + '-' + randomSuffix + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
                                             previewStatus.textContent = 'Mengunggah ke Firebase Storage...';
                                             const downloadUrl = await window.sharedHelpers.uploadFileToStorage(f, safeName);
                                             console.log('Firebase upload success', downloadUrl);
                                             if (downloadUrl) {
+                                                // attempt to delete previous image from storage if different
+                                                try {
+                                                    const origInput = document.getElementById('article-original-image');
+                                                    const orig = origInput ? (origInput.value || '') : '';
+                                                    if (orig && orig !== downloadUrl && window.sharedHelpers && typeof window.sharedHelpers.deleteFileFromStorage === 'function') {
+                                                        try {
+                                                            await window.sharedHelpers.deleteFileFromStorage(orig);
+                                                            console.log('Old image deleted from storage:', orig);
+                                                        } catch (delErr) {
+                                                            console.warn('Failed to delete old image from storage (continuing):', delErr);
+                                                        }
+                                                    }
+                                                } catch (e) { console.warn('old image delete check failed', e); }
+                                                // set new image URL and mark original value for subsequent edits
                                                 imgInput.value = downloadUrl;
+                                                const origInputAfter = document.getElementById('article-original-image'); if (origInputAfter) origInputAfter.value = downloadUrl;
+                                                // update preview thumb dataset so any onerror/resolver uses the new origin
+                                                try {
+                                                    if (previewThumb) {
+                                                        previewThumb.dataset.orig = downloadUrl;
+                                                        previewThumb.dataset.variants = JSON.stringify([downloadUrl]);
+                                                        previewThumb.dataset.variantIndex = '0';
+                                                        previewThumb.dataset.error = '';
+                                                        previewThumb.src = downloadUrl;
+                                                    }
+                                                } catch(e) { console.warn('failed to update preview thumb after upload', e); }
+                                                // clear the file input to avoid stale state
+                                                try { fileInput.value = ''; } catch(e) {}
                                                 imgInput.dispatchEvent(new Event('input'));
-                                                try { previewThumb.src = downloadUrl; } catch(e){}
                                                 previewStatus.textContent = 'Upload selesai (Firebase Storage)';
                                                 return;
                                             }
@@ -527,6 +558,47 @@
                                         previewStatus.textContent = 'Gagal upload: ' + (err && err.message ? err.message : 'network error');
                                     }
                                 });
+                                // delete button wiring: delete image from storage and clear input/preview
+                                try {
+                                    if (deleteBtn) {
+                                        deleteBtn.addEventListener('click', async (ev) => {
+                                            ev.preventDefault();
+                                            const origInput = document.getElementById('article-original-image');
+                                            const current = (imgInput && imgInput.value) ? imgInput.value.trim() : (origInput && origInput.value ? origInput.value.trim() : '');
+                                            if (!current) { previewStatus.textContent = 'Tidak ada gambar untuk dihapus'; return; }
+                                            if (!confirm('Hapus gambar terkait artikel ini dari storage? Tindakan ini tidak bisa dibatalkan.')) return;
+                                            try {
+                                                previewStatus.textContent = 'Menghapus gambar...';
+                                                if (window.sharedHelpers && typeof window.sharedHelpers.deleteFileFromStorage === 'function') {
+                                                    await window.sharedHelpers.deleteFileFromStorage(current);
+                                                    console.log('Deleted image from storage (via edit):', current);
+                                                }
+                                                // clear inputs and preview
+                                                    if (imgInput) { imgInput.value = ''; imgInput.dispatchEvent(new Event('input')); }
+                                                    if (origInput) origInput.value = '';
+                                                    try {
+                                                        if (previewThumb) {
+                                                            previewThumb.dataset.orig = '';
+                                                            previewThumb.dataset.variants = '';
+                                                            previewThumb.dataset.variantIndex = '0';
+                                                            previewThumb.dataset.error = '';
+                                                            previewThumb.src = 'https://placehold.co/160x90/E2E8F0/333?text=No+Image';
+                                                            // remove any resolve detail button overlay near the thumb
+                                                            const parent = previewThumb.parentElement || previewThumb.closest('div');
+                                                            if (parent) {
+                                                                const btn = parent.querySelector && parent.querySelector('.shared-img-detail-btn');
+                                                                if (btn && btn.parentElement) btn.parentElement.removeChild(btn);
+                                                            }
+                                                        }
+                                                    } catch(e) { console.warn('failed to reset preview thumb after delete', e); }
+                                                    previewStatus.textContent = 'Gambar dihapus';
+                                            } catch (errDel) {
+                                                console.error('Failed to delete image from storage:', errDel);
+                                                previewStatus.textContent = 'Gagal menghapus gambar: ' + (errDel && errDel.message ? errDel.message : JSON.stringify(errDel));
+                                            }
+                                        });
+                                    }
+                                } catch (e) { console.warn('delete button wiring failed', e); }
                             }
                         } catch (e) { console.warn('upload wiring failed', e); }
             } catch (e) { console.warn('Quill init failed, falling back to contentEditable', e); }
