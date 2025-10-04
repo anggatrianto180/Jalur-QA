@@ -950,6 +950,11 @@
         // Render AI Testcase generation page
         const renderAIGeneratePage = () => {
             pageContent.innerHTML = document.getElementById('ai-generate-page-template').innerHTML;
+            // small helper to escape HTML when injecting user-provided strings into tables
+            const escapeHtml = (str) => {
+                if (str === null || str === undefined) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            };
             const fileInput = document.getElementById('ai-file-input');
             const textInput = document.getElementById('ai-text-input');
             const btn = document.getElementById('ai-generate-btn');
@@ -981,10 +986,62 @@
                 // data expected to be an object with sections: positive, negative, edge, setup, security, api, stress, recommendations
                 if (!data) { result.innerHTML = '<div class="text-red-500">No response</div>'; return; }
                 const sections = [];
+                    const renderTestCase = (c, idx) => {
+                    if (!c) return '';
+                    // if c is a string, render simple li
+                    if (typeof c === 'string') return `<li class="mb-2"><strong>${idx+1}.</strong> ${c}</li>`;
+                    // object with fields
+                    const steps = Array.isArray(c.steps) ? `<ol class="list-decimal pl-6 mt-2">${c.steps.map(s => `<li class="mb-1">${s}</li>`).join('')}</ol>` : '';
+                    const inputs = (Array.isArray(c.inputs) && c.inputs.length) ? `<div class="text-xs text-gray-600 mt-2"><strong>Inputs:</strong> ${c.inputs.map(inp => JSON.stringify(inp)).join(', ')}</div>` : '';
+                    const expected = c.expected ? `<div class="mt-2"><strong>Ekspektasi (Expected):</strong> ${c.expected}</div>` : '';
+                    const severity = c.severity ? `<div class="text-sm mt-1"><strong>Severity / Prioritas:</strong> ${c.severity}</div>` : '';
+                    const notes = c.notes ? `<div class="text-xs text-gray-600 mt-1"><strong>Catatan:</strong> ${c.notes}</div>` : '';
+                    const pre = (Array.isArray(c.preconditions) && c.preconditions.length) ? `<div class="text-xs text-gray-600 mt-1"><strong>Prekondisi:</strong><ul class="list-disc pl-6">${c.preconditions.map(p=>`<li>${p}</li>`).join('')}</ul></div>` : '';
+                    const post = (Array.isArray(c.postconditions) && c.postconditions.length) ? `<div class="text-xs text-gray-600 mt-1"><strong>Postkondisi:</strong><ul class="list-disc pl-6">${c.postconditions.map(p=>`<li>${p}</li>`).join('')}</ul></div>` : '';
+                    const apiSample = c.apiSample ? `<details class="mt-2"><summary class="cursor-pointer text-sm font-medium">Contoh API Request/Response</summary><pre class="text-xs mt-2 bg-gray-50 p-2 rounded">${JSON.stringify(c.apiSample,null,2)}</pre></details>` : '';
+                    const automation = c.automation ? `<div class="text-xs text-gray-600 mt-1"><strong>Automation hint:</strong> ${c.automation}</div>` : '';
+                    const est = c.estimatedMinutes ? `<div class="text-xs text-gray-600 mt-1"><strong>Estimasi waktu:</strong> ${c.estimatedMinutes} menit</div>` : '';
+                    const tags = (Array.isArray(c.tags) && c.tags.length) ? `<div class="text-xs text-gray-600 mt-1"><strong>Tags:</strong> ${c.tags.map(t=>`<span class="inline-block bg-slate-100 text-slate-700 px-2 py-0.5 mr-1 rounded text-xs">${t}</span>`).join('')}</div>` : '';
+                                        // return table row cells
+                                        return `
+                                                                <tr class="even:bg-gray-50">
+                                                                    <td class="p-2 align-top text-sm">${idx+1}</td>
+                                                                    <td class="p-2 align-top text-sm font-semibold">${c.title || 'Untitled test'}</td>
+                                                                    <td class="p-2 align-top text-sm">${steps}${pre}${post}${automation}${est}${tags}</td>
+                                                                    <td class="p-2 align-top text-sm">${inputs}${apiSample}</td>
+                                                                    <td class="p-2 align-top text-sm">${expected}</td>
+                                                                    <td class="p-2 align-top text-sm">${severity}</td>
+                                                                    <td class="p-2 align-top text-sm">${notes}</td>
+                                                                </tr>`;
+                };
+
                 const pushSection = (title, content) => {
                     if (!content) return;
-                    const html = Array.isArray(content) ? content.map((c,i) => `<li class="mb-2"><strong>${i+1}.</strong> ${c}</li>`).join('') : `<div>${content}</div>`;
-                    sections.push(`<div class="bg-white rounded-lg shadow p-4 mb-4"><h3 class="font-semibold mb-2">${title}</h3><div class="text-sm text-gray-700"><ol class="pl-4">${html}</ol></div></div>`);
+                    let html = '';
+                    // keep a mapping of generated section content so we can attach CSV download handlers
+                    if (typeof pushSection._counter === 'undefined') pushSection._counter = 0;
+                    if (typeof pushSection._map === 'undefined') pushSection._map = {};
+                    const secId = `compact-sec-${++pushSection._counter}`;
+                    pushSection._map[secId] = { title, content };
+                    if (Array.isArray(content)) {
+                        // Compact summary table: No | Title | Description | Expected
+                        const compactRows = content.map((c, i) => {
+                            const titleText = c.title || ('Test ' + (i+1));
+                            // build description by joining steps, pre/post, notes
+                            const parts = [];
+                            if (Array.isArray(c.steps) && c.steps.length) parts.push('Steps: ' + c.steps.join(' | '));
+                            if (Array.isArray(c.preconditions) && c.preconditions.length) parts.push('Pre: ' + c.preconditions.join(' | '));
+                            if (Array.isArray(c.postconditions) && c.postconditions.length) parts.push('Post: ' + c.postconditions.join(' | '));
+                            if (c.notes) parts.push('Notes: ' + c.notes);
+                            const desc = parts.join('\n');
+                            const expectedText = c.expected || '';
+                            return `<tr class="even:bg-gray-50"><td class="p-2 align-top text-sm">${i+1}</td><td class="p-2 align-top text-sm font-semibold">${escapeHtml(titleText)}</td><td class="p-2 align-top text-sm whitespace-pre-line">${escapeHtml(desc)}</td><td class="p-2 align-top text-sm">${escapeHtml(expectedText)}</td></tr>`;
+                        }).join('');
+                        const detailRows = content.map((c,i) => renderTestCase(c, i)).join('');
+                        html = `<div class="mb-4"><div class="text-sm font-medium mb-2">Ringkasan (Compact) <button data-sec="${secId}" class="download-csv-btn ml-3 text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300">Download CSV</button></div><div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="bg-gray-100"><th class="p-2 text-sm">No</th><th class="p-2 text-sm">Title</th><th class="p-2 text-sm">Description</th><th class="p-2 text-sm">Expected</th></tr></thead><tbody>${compactRows}</tbody></table></div></div>`;
+                    } else if (typeof content === 'object') html = `<pre class="text-xs">${JSON.stringify(content,null,2)}</pre>`;
+                    else html = `<div>${content}</div>`;
+                    sections.push(`<div class="bg-white rounded-lg shadow p-4 mb-4"><h3 class="font-semibold mb-2">${title}</h3><div class="text-sm text-gray-700">${html}</div></div>`);
                 };
                 pushSection('Positive Test Cases', data.positive);
                 pushSection('Negative Test Cases', data.negative);
@@ -995,6 +1052,46 @@
                 pushSection('Stress / Performance Test Suggestions', data.stress);
                 pushSection('Other Recommendations', data.recommendations);
                 result.innerHTML = sections.join('') || '<div class="text-gray-500">No detailed items returned.</div>';
+
+                // Attach CSV download handlers for the generated sections
+                const buildCsvForContent = (content) => {
+                    const rows = [];
+                    // header
+                    rows.push(['No','Title','Description','Expected']);
+                    (content || []).forEach((c, idx) => {
+                        const title = c.title || (`Test ${idx+1}`);
+                        const parts = [];
+                        if (Array.isArray(c.steps) && c.steps.length) parts.push('Steps: ' + c.steps.join(' | '));
+                        if (Array.isArray(c.preconditions) && c.preconditions.length) parts.push('Pre: ' + c.preconditions.join(' | '));
+                        if (Array.isArray(c.postconditions) && c.postconditions.length) parts.push('Post: ' + c.postconditions.join(' | '));
+                        if (c.notes) parts.push('Notes: ' + c.notes);
+                        const desc = parts.join('\n');
+                        const expected = c.expected || '';
+                        rows.push([String(idx+1), title, desc, expected]);
+                    });
+                    // convert to CSV text with proper quoting
+                    return rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+                };
+
+                const sanitizeFilename = (s) => (s || 'testcases').replace(/[^a-z0-9_\- ]/gi,'_').replace(/\s+/g,'_');
+
+                document.querySelectorAll('.download-csv-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const sec = btn.getAttribute('data-sec');
+                        const meta = pushSection._map && pushSection._map[sec];
+                        if (!meta) return;
+                        const csv = buildCsvForContent(meta.content || []);
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = sanitizeFilename(meta.title || 'testcases') + '.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                    });
+                });
             };
 
             btn.addEventListener('click', async () => {
@@ -1005,14 +1102,24 @@
                     if (file) {
                         const fd = new FormData(); fd.append('file', file);
                         const r = await fetch('/ai-generate', { method: 'POST', body: fd });
-                        if (!r.ok) throw new Error('Server error: ' + r.statusText);
-                        resp = await r.json();
+                            if (!r.ok) {
+                                const txt = await r.text();
+                                try { const j = JSON.parse(txt); status.textContent = j.error || j.message || `Server ${r.status}`; result.innerHTML = `<pre class="text-xs">${JSON.stringify(j,null,2)}</pre>`; }
+                                catch (e) { status.textContent = `Server ${r.status}: ${txt}`; result.innerHTML = `<pre class="text-xs">${txt}</pre>`; }
+                                btn.disabled = false; return;
+                            }
+                            try { resp = await r.json(); } catch (e) { const txt = await r.text(); status.textContent = 'Invalid JSON from server'; result.innerHTML = `<pre class="text-xs">${txt}</pre>`; btn.disabled = false; return; }
                     } else {
                         const text = (textInput.value || '').trim();
                         if (!text) { status.textContent = 'Silakan unggah file atau tempel teks.'; btn.disabled = false; return; }
                         const r = await fetch('/ai-generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
-                        if (!r.ok) throw new Error('Server error: ' + r.statusText);
-                        resp = await r.json();
+                        if (!r.ok) {
+                            const txt = await r.text();
+                            try { const j = JSON.parse(txt); status.textContent = j.error || j.message || `Server ${r.status}`; result.innerHTML = `<pre class="text-xs">${JSON.stringify(j,null,2)}</pre>`; }
+                            catch (e) { status.textContent = `Server ${r.status}: ${txt}`; result.innerHTML = `<pre class="text-xs">${txt}</pre>`; }
+                            btn.disabled = false; return;
+                        }
+                        try { resp = await r.json(); } catch (e) { const txt = await r.text(); status.textContent = 'Invalid JSON from server'; result.innerHTML = `<pre class="text-xs">${txt}</pre>`; btn.disabled = false; return; }
                     }
                     status.textContent = 'Rendering results...';
                     renderResponse(resp);
