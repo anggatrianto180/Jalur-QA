@@ -110,10 +110,11 @@
         <!-- ===== HEADER / NAVIGASI ===== -->
         <header id="main-header" class="bg-white shadow-md sticky top-0 z-50">
             <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-                <a href="#" class="nav-link text-2xl font-bold text-blue-600" data-page="home">Jalur QA</a>
+                        <a href="#" class="nav-link text-2xl font-bold text-blue-600" data-page="home">Jalur QA</a>
                 <div class="hidden md:flex space-x-6 items-center">
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="home">Beranda</a>
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="blog">Artikel</a>
+                    <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="ai-generate">AI Testcase</a>
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="paths">Jalur Belajar</a>
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="tools">Tools</a>
                     <a href="#" class="nav-link text-gray-600 hover:text-blue-600" data-page="about">Tentang Saya</a>
@@ -125,6 +126,7 @@
             </nav>
             <!-- Menu Mobile -->
             <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+                <button id="mobile-back-button" class="block py-2 text-gray-600 hover:text-blue-600 w-full text-left">&larr; Kembali</button>
                 <a href="#" class="nav-link block py-2 text-gray-600 hover:text-blue-600" data-page="home">Beranda</a>
                 <a href="#" class="nav-link block py-2 text-gray-600 hover:text-blue-600" data-page="blog">Artikel</a>
                 <a href="#" class="nav-link block py-2 text-gray-600 hover:text-blue-600" data-page="paths">Jalur Belajar</a>
@@ -134,6 +136,13 @@
             </div>
         </header>
 
+        <!-- Page-level back button (moved out of header). Hidden on home page and when no in-app history -->
+        <div class="container mx-auto px-6 py-4" id="page-back-container">
+            <button id="page-back-button" class="hidden text-gray-600 hover:text-blue-600 flex items-center mb-4" title="Kembali">
+                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                <span class="ml-2">Kembali</span>
+            </button>
+        </div>
         <main id="page-content">
             <!-- Halaman akan dirender di sini oleh JavaScript -->
         </main>
@@ -203,48 +212,66 @@
         </div>
     </template>
 
-    <template id="blog-page-template">
-        <div class="container mx-auto px-6 py-12 fade-in">
-            <h1 class="text-4xl font-bold text-center mb-4">Semua Artikel</h1>
-            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">Jelajahi semua artikel yang telah kami publikasikan. Gunakan pencarian dan filter untuk menemukan topik yang Anda minati.</p>
-
-            <!-- Fitur Pencarian dan Filter -->
-            <div class="flex flex-col md:flex-row gap-4 mb-10">
-                <input type="text" id="search-input" placeholder="Cari artikel..." class="w-full md:w-2/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <select id="category-filter" class="w-full md:w-1/3 px-4 py-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <!-- Opsi Kategori akan di-render di sini -->
-                </select>
+        <template id="blog-page-template">
+            <div class="fade-in">
+                <section class="flex max-w-7xl mx-auto">
+                    <!-- Sidebar Kategori -->
+                                <aside class="w-64 bg-gray-50 border-r px-6 py-8 hidden md:block">
+                                    <nav class="space-y-6">
+                                        <div>
+                                            <h2 class="font-bold text-lg mb-4 cursor-pointer" id="sidebar-all">All Articles</h2>
+                                        </div>
+                                        <div>
+                                            <h2 class="font-bold text-lg mb-2">Article</h2>
+                                            <ul class="ml-4 space-y-2 text-gray-700" id="sidebar-category-list">
+                                                <!-- Kategori akan di-render di sini -->
+                                            </ul>
+                                        </div>
+                                    </nav>
+                                </aside>
+                    <!-- Daftar Artikel -->
+                    <main class="flex-1 px-8 py-8">
+                        <div class="flex items-center justify-between mb-8">
+                            <input type="text" id="search-input" placeholder="Search" class="border rounded px-4 py-2 w-1/3" />
+                                            <!-- Filter kategori dihilangkan -->
+                        </div>
+                                <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    <!-- Artikel akan di-render di sini -->
+                                </div>
+                                <div id="blog-pagination" class="mt-8 flex items-center justify-center space-x-4"></div>
+                                <div id="no-results" class="hidden text-center py-16 text-gray-500">
+                                    <p class="text-xl">Artikel tidak ditemukan.</p>
+                                </div>
+                    </main>
+                </section>
             </div>
-
-            <!-- Grid Artikel -->
-            <div id="articles-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Hasil pencarian dan filter akan di-render di sini -->
-            </div>
-             <div id="no-results" class="hidden text-center py-16 text-gray-500">
-                <p class="text-xl">Artikel tidak ditemukan.</p>
-            </div>
-        </div>
-    </template>
+        </template>
     
     <template id="article-page-template">
-         <div class="container mx-auto px-6 py-12 fade-in">
-            <div class="flex flex-col lg:flex-row gap-12">
-                <!-- Konten Artikel -->
-                <article class="w-full lg:w-3/4">
-                    <div id="article-content-wrapper">
-                        <!-- Konten detail artikel akan di-render di sini -->
-                    </div>
-                </article>
+        <div class="container mx-auto px-6 py-12 fade-in">
+            <div class="flex justify-center">
+                <div class="flex items-start gap-8">
+                    <!-- Center: article content (constrained width) -->
+                    <article class="mx-auto max-w-3xl">
+                        <header class="mb-8">
+                            <h1 id="article-title" class="text-3xl md:text-4xl font-bold leading-tight mb-4"></h1>
+                            <div id="article-meta" class="text-gray-500 text-sm mb-6"></div>
+                            <div id="article-hero" class="mb-8">
+                                <!-- Hero image will be injected here -->
+                            </div>
+                        </header>
+                        <div id="article-content-wrapper" class="article-body"></div>
+                    </article>
 
-                <!-- Daftar Isi (Table of Contents) -->
-                <aside class="w-full lg:w-1/4 lg:sticky top-24 self-start">
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h3 class="font-bold text-lg mb-4">Daftar Isi</h3>
-                        <ul id="toc-list" class="space-y-2 text-gray-600">
-                           <!-- TOC akan di-render di sini -->
-                        </ul>
-                    </div>
-                </aside>
+                    <!-- Right: social share buttons adjacent to article -->
+                    <aside class="hidden md:flex flex-col items-center space-y-4 mt-6">
+                        <div class="text-sm text-gray-500 mb-2">Share</div>
+                        <button class="share-btn bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center" data-network="twitter"><i data-lucide="twitter" class="w-4 h-4 text-gray-700"></i></button>
+                        <button class="share-btn bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center" data-network="linkedin"><i data-lucide="linkedin" class="w-4 h-4 text-gray-700"></i></button>
+                        <button class="share-btn bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center" data-network="telegram"><i data-lucide="send" class="w-4 h-4 text-gray-700"></i></button>
+                        <button class="share-btn bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center" data-network="reddit"><i data-lucide="share-2" class="w-4 h-4 text-gray-700"></i></button>
+                    </aside>
+                </div>
             </div>
         </div>
     </template>
@@ -292,6 +319,46 @@
             <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">Jelajahi berbagai tools yang umum digunakan dalam dunia Software Quality Assurance untuk mempermudah pekerjaan Anda.</p>
             <div id="tools-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                  <!-- Daftar tools akan di-render di sini -->
+            </div>
+        </div>
+    </template>
+
+    <!-- AI Testcase generation page (styled) -->
+    <template id="ai-generate-page-template">
+        <div class="container mx-auto px-6 py-12 fade-in">
+            <div class="max-w-4xl mx-auto bg-gray-50 p-10 rounded-2xl shadow-lg">
+                <h1 class="text-3xl font-bold text-center mb-2">AI Test Case Generator</h1>
+                <p class="text-center text-gray-600 mb-8">Upload a specification document (.docx, .pdf) or type a feature description to auto-generate test scenarios. Powered by Gemini API.</p>
+
+                <div id="ai-card" class="bg-white rounded-xl p-6">
+                    <div id="drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-3">
+                                <i data-lucide="file-text" class="w-6 h-6 text-gray-600"></i>
+                            </div>
+                            <div class="text-gray-700 font-medium">Drag & drop a file, or click to select</div>
+                            <div class="text-sm text-gray-400 mt-2">Supports .docx and .pdf files</div>
+                            <input id="ai-file-input" type="file" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center my-6">
+                        <div class="flex-1 h-px bg-gray-200"></div>
+                        <div class="px-4 text-sm text-gray-400">OR</div>
+                        <div class="flex-1 h-px bg-gray-200"></div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <textarea id="ai-text-input" rows="4" class="flex-1 p-4 border rounded-lg" placeholder="Type your feature description here..."></textarea>
+                        <div class="w-44 flex items-start">
+                            <button id="ai-generate-btn" class="ml-auto bg-black text-white px-4 py-3 rounded-lg shadow">✨ Generate Test Cases</button>
+                        </div>
+                    </div>
+
+                    <div id="ai-status" class="text-sm text-gray-500 mt-3"></div>
+                </div>
+
+                <div id="ai-result" class="mt-8"></div>
             </div>
         </div>
     </template>
@@ -364,10 +431,13 @@
             else initApp();
         }).catch((e) => { console.error('waitForFirebase failed:', e); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp); else initApp(); });
 
-        // lightweight cache for read-only data
-        let dbCache = { categories: [], learningPaths: [], tools: [], comments: [] };
+    // lightweight cache for read-only data
+    let dbCache = { categories: [], learningPaths: [], tools: [], comments: [] };
 
-        const appState = { currentPage: 'home', dataLoaded: false };
+        // SPA state including simple in-app history stack
+        const appState = { currentPage: 'home', currentId: null, dataLoaded: false, history: [],
+            // blog pagination state
+            blogPageSize: 12, blogPage: 1, blogCursors: {} };
 
         const pageContent = document.getElementById('page-content');
         const mainHeader = document.getElementById('main-header');
@@ -429,38 +499,68 @@
             return `hsl(${h}deg 70% 85%)`;
         };
 
-        const renderArticleCard = (article) => {
-            // This function returns HTML for an article card. Image resolution (if stored in Firebase Storage)
-            // will be handled before injecting into the DOM in render functions so here we assume
-            // article.image is already a usable URL.
-            const hasImage = article.image && String(article.image).trim() !== '';
-            const categoryName = getCategoryName(article.categoryId);
-            if (hasImage) {
-                return `
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                    <img src="${article.image}" alt="${article.title}" class="w-full h-48 object-cover" data-orig="${article.image}" onerror="(window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') ? window.sharedHelpers.tryResolveAndSetImg(this) : (this.src='https://placehold.co/600x400/E2E8F0/333?text=No+Image')">
-                    <div class="p-6">
-                        <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
-                        <h3 class="font-bold text-xl mt-2 mb-3 h-14 overflow-hidden">${article.title}</h3>
-                        <p class="text-gray-600 text-sm h-10 overflow-hidden">${article.excerpt}</p>
-                        <a href="#" class="nav-link text-blue-600 font-semibold mt-4 inline-block" data-page="article" data-id="${article.id}">Baca Selengkapnya &rarr;</a>
-                    </div>
-                </div>`;
-            }
-            return `
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                    <div class="w-full h-48 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-                        <div class="text-center px-4">
-                            <h3 class="font-bold text-xl">${article.title}</h3>
-                            <p class="text-blue-600 font-semibold mt-2">${categoryName}</p>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <p class="text-gray-600 text-sm h-10 overflow-hidden">${article.excerpt}</p>
-                        <a href="#" class="nav-link text-blue-600 font-semibold mt-4 inline-block" data-page="article" data-id="${article.id}">Baca Selengkapnya &rarr;</a>
-                    </div>
-                </div>`;
+        // Simple debounce helper to prevent excessive filtering while user types
+        const debounce = (fn, wait = 400) => {
+            let t = null;
+            return function(...args) {
+                if (t) clearTimeout(t);
+                t = setTimeout(() => { fn.apply(this, args); }, wait);
+            };
         };
+
+                const renderArticleCard = (article) => {
+                        // Returns HTML for an article card with image, title, excerpt, date, and read time.
+                        const hasImage = article.image && String(article.image).trim() !== '';
+                        const categoryName = getCategoryName(article.categoryId);
+                        // Format date to Indonesian long format (e.g. '3 Oktober 2025')
+                        const formatDateLong = (d) => {
+                            try {
+                                return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                            } catch (e) { return d.toISOString().split('T')[0]; }
+                        };
+                        let dateStr = '';
+                        if (article.date && typeof article.date.toDate === 'function') {
+                            const d = article.date.toDate();
+                            dateStr = formatDateLong(d);
+                        } else if (article.date) {
+                            const d = new Date(article.date);
+                            dateStr = formatDateLong(d);
+                        }
+                        // Estimate read time (simple: 200 words/min)
+                        const wordCount = (article.content || '').split(/\s+/).length;
+                        const readTime = Math.max(1, Math.round(wordCount/200));
+                    if (hasImage) {
+                        return `
+                        <a href="#" class="nav-link block" data-page="article" data-id="${article.id}">
+                          <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden">
+                              <img src="${article.image}" alt="${article.title}" class="w-full h-40 object-cover" data-orig="${article.image}" onerror="(window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') ? window.sharedHelpers.tryResolveAndSetImg(this) : (this.src='https://placehold.co/600x400/E2E8F0/333?text=No+Image')">
+                              <div class="p-4">
+                                  <h3 class="font-semibold text-lg mb-2">${article.title}</h3>
+                                  <div class="flex items-center justify-between text-sm text-gray-500">
+                                      <span>${dateStr}</span>
+                                      <span>${readTime} min read</span>
+                                  </div>
+                              </div>
+                          </div>
+                        </a>`;
+                    }
+                    return `
+                        <a href="#" class="nav-link block" data-page="article" data-id="${article.id}">
+                          <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden">
+                              <div class="w-full h-40 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+                                  <div class="text-center px-4">
+                                      <h3 class="font-semibold text-lg mb-2">${article.title}</h3>
+                                  </div>
+                              </div>
+                              <div class="p-4">
+                                  <div class="flex items-center justify-between text-sm text-gray-500">
+                                      <span>${dateStr}</span>
+                                      <span>${readTime} min read</span>
+                                  </div>
+                              </div>
+                          </div>
+                        </a>`;
+                };
 
         const renderPathCard = (path) => {
             // Use a special start-path action: we'll resolve the first available article at click-time
@@ -577,24 +677,141 @@
             } catch (e) { console.warn('fetchVisitorStats failed', e); return []; }
         };
 
+        // fetch a page of articles from Firestore with optional category filtering
+        const fetchArticlesPage = async ({ page = 1, limit = 12, categoryId = null } = {}) => {
+            try {
+                let q = firestore.collection('articles').orderBy('date', 'desc').limit(limit);
+                if (categoryId && categoryId !== 'all') q = firestore.collection('articles').where('categoryId','==',categoryId).orderBy('date','desc').limit(limit);
+                // For pages > 1, use stored cursor (last doc) if available
+                const cursorKey = `${categoryId || 'all'}::page::${page}`;
+                if (page > 1) {
+                    // find previous page's last doc to start after
+                        const prevKey = `${categoryId || 'all'}::page::${page-1}`;
+                        const lastDoc = appState.blogCursors[prevKey];
+                        // appState.blogCursors stores a DocumentSnapshot for the last doc of the previous page
+                        if (lastDoc) {
+                            q = q.startAfter(lastDoc);
+                        }
+                }
+                const snap = await q.get();
+                const docs = snap.docs.map(d => ({ id: d.id, ...d.data(), _snap: d }));
+                // store last doc snapshot as cursor for this page
+                const key = `${categoryId || 'all'}::page::${page}`;
+                if (docs.length > 0) appState.blogCursors[key] = docs[docs.length-1]._snap;
+                return docs;
+            } catch (e) { console.error('fetchArticlesPage failed', e); return []; }
+        };
+
+        const renderPaginationControls = (currentPage, hasNext) => {
+            const container = document.getElementById('blog-pagination');
+            if (!container) return;
+            container.innerHTML = '';
+            // Previous arrow
+            const prevBtn = document.createElement('button');
+            prevBtn.innerHTML = '&lsaquo;';
+            prevBtn.className = 'px-3 py-2 bg-gray-100 rounded';
+            prevBtn.disabled = currentPage <= 1;
+            if (prevBtn.disabled) prevBtn.classList.add('opacity-50','cursor-not-allowed');
+            prevBtn.onclick = async () => { if (currentPage > 1) { appState.blogPage = currentPage - 1; await renderBlogPage(); window.scrollTo({top:0,behavior:'smooth'}); } };
+            container.appendChild(prevBtn);
+
+            // Determine the maximum page number we can show: we only know up to currentPage + 1 when hasNext
+            const maxPage = currentPage + (hasNext ? 1 : 0);
+            for (let p = 1; p <= maxPage; p++) {
+                const b = document.createElement('button');
+                b.textContent = String(p);
+                b.className = 'px-4 py-2 rounded';
+                if (p === currentPage) {
+                    b.classList.add('bg-gray-200','text-gray-700');
+                } else {
+                    b.classList.add('bg-white','text-gray-700','hover:bg-gray-100');
+                }
+                // disable clicking to pages beyond current+1 (we can't jump forward reliably without cursor)
+                if (p > currentPage + 1) { b.disabled = true; b.classList.add('opacity-50','cursor-not-allowed'); }
+                b.onclick = async () => {
+                    if (p === currentPage) return;
+                    appState.blogPage = p;
+                    await renderBlogPage();
+                    window.scrollTo({top:0,behavior:'smooth'});
+                };
+                container.appendChild(b);
+            }
+
+            // Next arrow
+            const nextBtn = document.createElement('button');
+            nextBtn.innerHTML = '&rsaquo;';
+            nextBtn.className = 'px-3 py-2 bg-gray-100 rounded';
+            nextBtn.disabled = !hasNext;
+            if (nextBtn.disabled) nextBtn.classList.add('opacity-50','cursor-not-allowed');
+            nextBtn.onclick = async () => { if (hasNext) { appState.blogPage = currentPage + 1; await renderBlogPage(); window.scrollTo({top:0,behavior:'smooth'}); } };
+            container.appendChild(nextBtn);
+        };
+
         const renderBlogPage = async (articlesToRender = null) => {
             pageContent.innerHTML = document.getElementById('blog-page-template').innerHTML;
-            const grid = document.getElementById('articles-grid'); const noResults = document.getElementById('no-results'); const categoryFilter = document.getElementById('category-filter');
-            categoryFilter.innerHTML = `<option value="all">Semua Kategori</option>` + dbCache.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-            // restore previous selected category if any
-            try { if (appState.currentCategory) categoryFilter.value = appState.currentCategory; else categoryFilter.value = 'all'; } catch(e) { categoryFilter.value = 'all'; }
-            let articles = articlesToRender || await fetchCollection('articles', { orderBy: 'date', direction: 'desc' });
-            // resolve images for page list
-            articles = await Promise.all(articles.map(async (a) => { try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') a.image = await window.sharedHelpers.resolveImageUrl(a.image); } catch(e){} return a; }));
-            if (articles.length > 0) { grid.innerHTML = articles.map(renderArticleCard).join(''); grid.classList.remove('hidden'); noResults.classList.add('hidden'); }
-            else { grid.classList.add('hidden'); noResults.classList.remove('hidden'); }
-            document.getElementById('search-input').addEventListener('input', handleFilterAndSearch);
-            document.getElementById('category-filter').addEventListener('change', handleFilterAndSearch);
+            const grid = document.getElementById('articles-grid');
+            const noResults = document.getElementById('no-results');
+            const categoryFilter = document.getElementById('category-filter');
+                        // If a category dropdown exists (older layout), populate it. Otherwise ignore.
+                        if (categoryFilter) {
+                            try {
+                                categoryFilter.innerHTML = `<option value="all">Semua Kategori</option>` + dbCache.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+                                if (appState.currentCategory) categoryFilter.value = appState.currentCategory; else categoryFilter.value = 'all';
+                            } catch (e) { try { categoryFilter.value = 'all'; } catch (e2){} }
+                        }
+            // If caller provided a filtered list (search results), render that directly (no pagination)
+            if (Array.isArray(articlesToRender) && articlesToRender.length >= 0) {
+                let articles = await Promise.all(articlesToRender.map(async (a) => { try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') a.image = await window.sharedHelpers.resolveImageUrl(a.image); } catch(e){} return a; }));
+                if (articles.length > 0) { if (grid) { grid.innerHTML = articles.map(renderArticleCard).join(''); grid.classList.remove('hidden'); } if (noResults) noResults.classList.add('hidden'); }
+                else { if (grid) grid.classList.add('hidden'); if (noResults) noResults.classList.remove('hidden'); }
+                // clear pagination when showing search results
+                renderPaginationControls(1, false);
+            } else {
+                // Use paged fetching
+                const pageNum = appState.blogPage || 1;
+                const catId = appState.currentCategory || null;
+                const docs = await fetchArticlesPage({ page: pageNum, limit: appState.blogPageSize, categoryId: catId });
+                const articles = await Promise.all(docs.map(async (a) => { try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') a.image = await window.sharedHelpers.resolveImageUrl(a.image); } catch(e){} return a; }));
+                if (articles.length > 0) { if (grid) { grid.innerHTML = articles.map(renderArticleCard).join(''); grid.classList.remove('hidden'); } if (noResults) noResults.classList.add('hidden'); }
+                else { if (grid) grid.classList.add('hidden'); if (noResults) noResults.classList.remove('hidden'); }
+                // determine whether there is a next page by requesting pageNum+1 with limit 1
+                let hasNext = false;
+                try {
+                    const nextDocs = await fetchArticlesPage({ page: pageNum + 1, limit: 1, categoryId: catId });
+                    hasNext = (nextDocs && nextDocs.length > 0);
+                } catch (e) { hasNext = false; }
+                renderPaginationControls(pageNum, hasNext);
+            }
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                // use debounced handler so filtering waits until typing pauses
+                searchInput.oninput = debounce(handleFilterAndSearch, 500);
+            }
+                        // Sidebar category click events
+                        setTimeout(() => {
+                            const allBtn = document.getElementById('sidebar-all');
+                            if (allBtn) allBtn.onclick = () => { appState.currentCategory = null; appState.blogPage = 1; renderBlogPage(); };
+                            const catList = document.getElementById('sidebar-category-list');
+                            if (catList && Array.isArray(dbCache.categories)) {
+                                catList.innerHTML = dbCache.categories.map(cat => `<li class="cursor-pointer hover:text-blue-600" data-cat="${cat.id}">${cat.name}</li>`).join('');
+                                catList.querySelectorAll('li').forEach(li => {
+                                    li.onclick = () => { appState.currentCategory = li.dataset.cat; appState.blogPage = 1; renderBlogPage(); };
+                                });
+                            }
+                        }, 300);
+                // Render blog page by category
+                const renderBlogPageByCategory = async (categoryId) => {
+                    appState.currentCategory = categoryId;
+                    appState.blogPage = 1;
+                    await renderBlogPage();
+                };
         };
 
         const handleFilterAndSearch = async () => {
-            const searchTerm = (document.getElementById('search-input').value || '').toLowerCase();
-            const categoryId = document.getElementById('category-filter').value;
+            const searchEl = document.getElementById('search-input');
+            const searchTerm = (searchEl && searchEl.value ? searchEl.value : '').toLowerCase();
+            const categoryEl = document.getElementById('category-filter');
+            const categoryId = (categoryEl && categoryEl.value) ? categoryEl.value : 'all';
             appState.currentCategory = categoryId;
             const allArticles = await fetchCollection('articles', { orderBy: 'date', direction: 'desc' });
             const filtered = allArticles.filter(article => {
@@ -612,24 +829,59 @@
             const article = { id: articleRef.id, ...articleRef.data() };
             // try resolving any storage path to a real URL
             try { if (window.sharedHelpers && typeof window.sharedHelpers.resolveImageUrl === 'function') article.image = await window.sharedHelpers.resolveImageUrl(article.image); } catch(e) { /* ignore */ }
-            pageContent.innerHTML = document.getElementById('article-page-template').innerHTML; const wrapper = document.getElementById('article-content-wrapper');
-            const date = (article.date && typeof article.date.toDate === 'function') ? article.date.toDate() : new Date(article.date);
-            const categoryName = getCategoryName(article.categoryId);
+            pageContent.innerHTML = document.getElementById('article-page-template').innerHTML;
+
+            // populate header/meta
+            const titleEl = document.getElementById('article-title');
+            const metaEl = document.getElementById('article-meta');
+            const heroEl = document.getElementById('article-hero');
+            const wrapper = document.getElementById('article-content-wrapper');
+
+            const date = (article.date && typeof article.date.toDate === 'function') ? article.date.toDate() : new Date(article.date || Date.now());
+            const byline = `<span>Oleh ${article.author || 'Unknown'}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span>`;
+
+            if (titleEl) titleEl.textContent = article.title || '';
+            if (metaEl) metaEl.innerHTML = byline;
+
+            // hero image
+            if (heroEl) {
+                if (article.image && String(article.image).trim() !== '') {
+                    const img = document.createElement('img');
+                    img.src = article.image;
+                    img.alt = article.title || 'Hero Image';
+                    img.className = 'w-full rounded-2xl mb-8 object-cover';
+                    img.style.maxHeight = '360px';
+                    img.setAttribute('data-orig', article.image);
+                    img.onerror = function(){ if (window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') window.sharedHelpers.tryResolveAndSetImg(this); else this.src='https://placehold.co/900x360/E2E8F0/333?text=No+Image'; };
+                    heroEl.appendChild(img);
+                } else {
+                    heroEl.innerHTML = `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl"><h2 class="text-2xl font-bold">${article.title}</h2></div>`;
+                }
+            }
+
+            // sanitize and inject content
             const safeContent = (window.DOMPurify && typeof DOMPurify.sanitize === 'function') ? DOMPurify.sanitize(article.content || '', {
-                ADD_ATTR: ['class','style'],
+                ADD_ATTR: ['class','style','id'],
                 ALLOWED_CSS_PROPERTIES: ['font-size','color','background-color','text-align','font-weight','font-style','font-family','margin-left','margin-right','margin-top','margin-bottom','padding-left']
             }) : (article.content || '');
-            try { console.log('renderArticlePage: sanitized content snippet ->', (safeContent || '').slice(0,400)); } catch(e) {}
-            wrapper.innerHTML = `
-                <span class="text-blue-500 font-semibold text-sm">${categoryName}</span>
-                <h1 class="text-3xl md:text-4xl font-bold mt-2 mb-4">${article.title}</h1>
-                <div class="text-gray-500 text-sm mb-6"><span>Oleh ${article.author}</span> &bull; <span>${date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
-                ${article.image && String(article.image).trim() !== '' ? `<img src="${article.image}" alt="${article.title}" class="w-full rounded-lg mb-8" data-orig="${article.image}" onerror="(window.sharedHelpers && typeof window.sharedHelpers.tryResolveAndSetImg === 'function') ? window.sharedHelpers.tryResolveAndSetImg(this) : (this.src='https://placehold.co/600x400/E2E8F0/333?text=No+Image')">` : `<div class="w-full h-48 mb-8 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg"><h2 class="text-2xl font-bold">${article.title}</h2></div>`}
-                <div class="article-body max-w-none">${safeContent}</div>
-            `;
-            const tocList = document.getElementById('toc-list'); const headings = wrapper.querySelectorAll('h2'); tocList.innerHTML = '';
-            if (headings.length > 0) { headings.forEach((h,i) => { h.id = `section-${i}`; tocList.innerHTML += `<li><a href="#${h.id}" class="hover:text-blue-600">${h.textContent}</a></li>`; }); tocList.parentElement.style.display = 'block'; }
-            else { tocList.parentElement.style.display = 'none'; }
+            wrapper.innerHTML = safeContent;
+
+            // wire share buttons (restored)
+            document.querySelectorAll('.share-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const network = btn.dataset.network;
+                    const url = encodeURIComponent(window.location.href);
+                    const text = encodeURIComponent(article.title || '');
+                    let shareUrl = '';
+                    if (network === 'twitter') shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+                    else if (network === 'linkedin') shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+                    else if (network === 'telegram') shareUrl = `https://t.me/share/url?url=${url}&text=${text}`;
+                    else if (network === 'reddit') shareUrl = `https://www.reddit.com/submit?url=${url}&title=${text}`;
+                    if (shareUrl) window.open(shareUrl, '_blank');
+                };
+            });
+
+            // no side back button anymore; rely on page-level back button
         };
 
         const renderToolPage = async (id) => {
@@ -695,9 +947,148 @@
             }
         };
 
-        const renderPage = async (page, id=null) => { switch(page){ case 'home': await renderHomePage(); break; case 'blog': await renderBlogPage(); break; case 'article': await renderArticlePage(id); break; case 'tool': await renderToolPage(id); break; case 'paths': renderPathsPage(); break; case 'path-detail': await renderPathDetailPage(id); break; case 'about': renderAboutPage(); break; case 'tools': renderToolsPage(); break; default: await renderHomePage(); } lucide.createIcons(); };
+        // Render AI Testcase generation page
+        const renderAIGeneratePage = () => {
+            pageContent.innerHTML = document.getElementById('ai-generate-page-template').innerHTML;
+            const fileInput = document.getElementById('ai-file-input');
+            const textInput = document.getElementById('ai-text-input');
+            const btn = document.getElementById('ai-generate-btn');
+            const status = document.getElementById('ai-status');
+            const result = document.getElementById('ai-result');
+            const dropArea = document.getElementById('drop-area');
 
-        const navigateTo = async (page, id = null) => { appState.currentPage = page; window.scrollTo(0,0); if (!appState.dataLoaded) await loadInitialData(); mainHeader.classList.remove('hidden'); await renderPage(page,id); };
+            // drag & drop handlers
+            if (dropArea) {
+                dropArea.addEventListener('click', () => fileInput.click());
+                dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('border-gray-400','bg-gray-50'); });
+                dropArea.addEventListener('dragleave', (e) => { e.preventDefault(); dropArea.classList.remove('border-gray-400','bg-gray-50'); });
+                dropArea.addEventListener('drop', (e) => {
+                    e.preventDefault(); dropArea.classList.remove('border-gray-400','bg-gray-50');
+                    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                    if (f) {
+                        // populate file input
+                        try { fileInput.files = e.dataTransfer.files; } catch (err) { /* some browsers don't allow programmatic setFiles */ }
+                        status.textContent = `Selected file: ${f.name}`;
+                    }
+                });
+                fileInput.addEventListener('change', () => {
+                    const f = fileInput.files && fileInput.files[0];
+                    if (f) status.textContent = `Selected file: ${f.name}`;
+                });
+            }
+
+            const renderResponse = (data) => {
+                // data expected to be an object with sections: positive, negative, edge, setup, security, api, stress, recommendations
+                if (!data) { result.innerHTML = '<div class="text-red-500">No response</div>'; return; }
+                const sections = [];
+                const pushSection = (title, content) => {
+                    if (!content) return;
+                    const html = Array.isArray(content) ? content.map((c,i) => `<li class="mb-2"><strong>${i+1}.</strong> ${c}</li>`).join('') : `<div>${content}</div>`;
+                    sections.push(`<div class="bg-white rounded-lg shadow p-4 mb-4"><h3 class="font-semibold mb-2">${title}</h3><div class="text-sm text-gray-700"><ol class="pl-4">${html}</ol></div></div>`);
+                };
+                pushSection('Positive Test Cases', data.positive);
+                pushSection('Negative Test Cases', data.negative);
+                pushSection('Edge / Boundary Test Cases', data.edge);
+                pushSection('Setup & Pre-conditions', data.setup);
+                pushSection('Security / Vulnerability Checks', data.security);
+                pushSection('API Test Suggestions', data.api);
+                pushSection('Stress / Performance Test Suggestions', data.stress);
+                pushSection('Other Recommendations', data.recommendations);
+                result.innerHTML = sections.join('') || '<div class="text-gray-500">No detailed items returned.</div>';
+            };
+
+            btn.addEventListener('click', async () => {
+                try {
+                    status.textContent = 'Submitting...'; btn.disabled = true; result.innerHTML = '';
+                    const file = fileInput.files && fileInput.files[0];
+                    let resp = null;
+                    if (file) {
+                        const fd = new FormData(); fd.append('file', file);
+                        const r = await fetch('/ai-generate', { method: 'POST', body: fd });
+                        if (!r.ok) throw new Error('Server error: ' + r.statusText);
+                        resp = await r.json();
+                    } else {
+                        const text = (textInput.value || '').trim();
+                        if (!text) { status.textContent = 'Silakan unggah file atau tempel teks.'; btn.disabled = false; return; }
+                        const r = await fetch('/ai-generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+                        if (!r.ok) throw new Error('Server error: ' + r.statusText);
+                        resp = await r.json();
+                    }
+                    status.textContent = 'Rendering results...';
+                    renderResponse(resp);
+                    status.textContent = 'Selesai';
+                } catch (e) {
+                    console.error('AI generate failed', e);
+                    // fallback: mocked response so UI still shows result during local dev
+                    const mock = {
+                        positive: ['Valid input flows produce expected outputs', 'Form submission with required fields filled should succeed'],
+                        negative: ['Missing required field should show validation error', 'Invalid email format should be rejected'],
+                        edge: ['Extremely long input (10k chars) should be truncated or show error', 'Concurrent submissions from multiple users should be handled gracefully'],
+                        setup: ['Create test user accounts', 'Seed database with sample data for testing flows'],
+                        security: ['SQL/NoSQL injection attempt vectors', 'Ensure file upload validation and content-type checks'],
+                        api: ['Verify endpoint returns 4xx for bad input', 'Check rate limits and pagination behavior for list endpoints'],
+                        stress: ['Run 1000 concurrent requests to key API endpoints', 'Measure median and p99 latencies under load'],
+                        recommendations: ['Add input size limits', 'Add authentication and authorization checks where needed']
+                    };
+                    renderResponse(mock);
+                    status.textContent = 'Terjadi kesalahan saat menghubungi server. Menampilkan hasil contoh.';
+                } finally { btn.disabled = false; }
+            });
+        };
+
+    const renderPage = async (page, id=null) => { switch(page){ case 'home': await renderHomePage(); break; case 'blog': await renderBlogPage(); break; case 'article': await renderArticlePage(id); break; case 'tool': await renderToolPage(id); break; case 'paths': renderPathsPage(); break; case 'path-detail': await renderPathDetailPage(id); break; case 'about': renderAboutPage(); break; case 'tools': renderToolsPage(); break; case 'ai-generate': renderAIGeneratePage(); break; default: await renderHomePage(); } lucide.createIcons(); };
+
+        const navigateTo = async (page, id = null) => {
+            try {
+                appState.currentPage = page;
+                appState.currentId = id || null;
+                window.scrollTo(0,0);
+                if (!appState.dataLoaded) await loadInitialData();
+                mainHeader.classList.remove('hidden');
+                await renderPage(page,id);
+                // ensure back button visibility updates after page render
+                updateBackButtonVisibility();
+            } catch (e) { console.error('navigateTo failed', e); }
+        };
+
+        // Push current page to history before navigating away
+        const pushHistory = (fromPage, fromId) => {
+            try {
+                // store simple objects: {page, id}
+                appState.history.push({ page: fromPage, id: fromId || null });
+                updateBackButtonVisibility();
+            } catch (e) { console.warn('pushHistory failed', e); }
+        };
+
+        const goBack = async () => {
+            try {
+                if (appState.history.length > 0) {
+                    const last = appState.history.pop();
+                    updateBackButtonVisibility();
+                    await navigateTo(last.page, last.id);
+                    return;
+                }
+                // If no in-app history, try browser history fallback
+                if (window.history && window.history.length > 1) { window.history.back(); return; }
+                // final fallback: go to home
+                await navigateTo('home');
+            } catch (e) { console.error('goBack failed', e); }
+        };
+
+        const updateBackButtonVisibility = () => {
+            try {
+                const btn = document.getElementById('page-back-button');
+                const mobileBack = document.getElementById('mobile-back-button');
+                if (!btn) return;
+                // hide back button when on home page or when history is empty
+                const shouldShow = (appState.currentPage && appState.currentPage !== 'home') && appState.history && appState.history.length > 0;
+                if (shouldShow) btn.classList.remove('hidden'); else btn.classList.add('hidden');
+                // mobile back: show only when not on home and when history exists
+                if (mobileBack) {
+                    if (shouldShow) mobileBack.classList.remove('hidden'); else mobileBack.classList.add('hidden');
+                }
+            } catch (e) { console.warn('updateBackButtonVisibility failed', e); }
+        };
 
         document.body.addEventListener('click', async (e) => {
             const target = e.target.closest('.nav-link');
@@ -705,6 +1096,8 @@
                 e.preventDefault();
                 const page = target.dataset.page;
                 const id = target.dataset.id;
+                // push current page to in-app history so Back works
+                try { pushHistory(appState.currentPage, appState.currentId); } catch (e) {}
                 if (page === 'start-path') {
                     // resolve the first existing article before navigating
                     await startPath(id);
@@ -717,6 +1110,16 @@
         });
 
         mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+        // Wire up page-level back button click
+        try {
+            const pageBack = document.getElementById('page-back-button');
+            if (pageBack) pageBack.addEventListener('click', (ev) => { ev.preventDefault(); goBack(); });
+        } catch (e) { console.warn('page back button wiring failed', e); }
+        try {
+            const mobileBack = document.getElementById('mobile-back-button');
+            if (mobileBack) mobileBack.addEventListener('click', (ev) => { ev.preventDefault(); goBack(); mobileMenu.classList.add('hidden'); });
+        } catch (e) { console.warn('mobile back wiring failed', e); }
 
     const initApp = async () => { try { await navigateTo('home'); } catch (e) { console.error('init failed:', e); } };
     // initApp will be called after Firebase scripts load (see waitForFirebase().then(...) above)
